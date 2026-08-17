@@ -13,7 +13,7 @@ export class BookingsService {
     private availabilityService: AvailabilityService,
   ) {}
 
-  async create(organizationId: string, userId: string, facilityId: string, dto: CreateBookingDto) {
+  async create(organizationId: string, userId: string, facilityId: string, dto: CreateBookingDto, idempotencyKey?: string) {
     const requestedStart = DateTime.fromISO(dto.startTime);
     const requestedEnd = DateTime.fromISO(dto.endTime);
 
@@ -48,9 +48,20 @@ export class BookingsService {
 
     // 2. Concurrency-Safe Transaction
     return this.prisma.$transaction(async (tx) => {
-      // 2a. Check for overlapping bookings (Locking could be added here if supported/needed)
-      // Using a simple read-then-write within a transaction is a baseline.
-      // In production PostgreSQL, we'd ideally use SERIALIZABLE isolation or row locks.
+      // 2a. Idempotency check
+      if (idempotencyKey) {
+        const existing = await tx.booking.findUnique({
+          where: { idempotencyKey },
+        });
+        if (existing) {
+          if (existing.userId === userId && existing.organizationId === organizationId) {
+            return existing;
+          }
+          throw new ConflictException('Idempotency key mismatch');
+        }
+      }
+
+      // 2b. Check for overlapping bookings
       const existingOverlaps = await tx.booking.findFirst({
         where: {
           facilityId,
@@ -66,9 +77,9 @@ export class BookingsService {
         throw new ConflictException('The requested slot is already booked');
       }
 
-      // 2b. Check Availability (Operating Hours & Blocks)
+      // 2c. Check Availability (Operating Hours & Blocks) - passing tx to ensure consistent read
       const dateStr = requestedStart.setZone(facility.venue.timezone).toISODate();
-      const availability = await this.availabilityService.getAvailability(organizationId, facilityId, dateStr!);
+      const availability = await this.availabilityService.getAvailability(organizationId, facilityId, dateStr!, 60, tx);
 
       const isAvailable = availability.availableIntervals.some(interval =>
         interval.contains(requestedInterval)
@@ -86,9 +97,12 @@ export class BookingsService {
           facilityId,
           startTime: requestedStart.toJSDate(),
           endTime: requestedEnd.toJSDate(),
-          status: BookingStatus.CONFIRMED, // Direct confirmation for this phase
+          status: BookingStatus.CONFIRMED,
+          idempotencyKey,
         },
       });
+    }, {
+      isolationLevel: 'Serializable',
     });
   }
 

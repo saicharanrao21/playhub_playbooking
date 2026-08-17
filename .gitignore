@@ -59,4 +59,3 @@ Thumbs.db
 backend/node_modules/
 backend/dist/
 backend/.env
-backend/prisma/migrations/

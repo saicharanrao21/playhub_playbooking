@@ -13,9 +13,12 @@ export class AvailabilityService {
     facilityId: string,
     dateStr: string, // YYYY-MM-DD
     durationMinutes: number = 60,
+    tx?: any, // Optional transaction client
   ) {
+    const prisma = tx || this.prisma;
+
     // 1. Ownership & Existence Validation
-    const facility = await this.prisma.facility.findFirst({
+    const facility = await prisma.facility.findFirst({
       where: {
         id: facilityId,
         venue: {
@@ -78,14 +81,14 @@ export class AvailabilityService {
     const endOfDay = date.endOf('day').toJSDate();
 
     const [blocks, bookings] = await Promise.all([
-      this.prisma.availabilityBlock.findMany({
+      prisma.availabilityBlock.findMany({
         where: {
           facilityId,
           startTime: { lt: endOfDay },
           endTime: { gt: startOfDay },
         },
       }),
-      this.prisma.booking.findMany({
+      prisma.booking.findMany({
         where: {
           facilityId,
           status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },

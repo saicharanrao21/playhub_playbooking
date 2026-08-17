@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Param, Query, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Param, Query, Patch, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader, ApiQuery } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
@@ -13,6 +13,7 @@ import { UserIdentity } from '../common/interfaces/user-identity.interface';
 @UseGuards(JwtAuthGuard, OrganizationGuard)
 @ApiBearerAuth()
 @ApiHeader({ name: 'x-organization-id', required: false })
+@ApiHeader({ name: 'x-idempotency-key', required: false })
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 
@@ -23,8 +24,10 @@ export class BookingsController {
     @CurrentUser() user: UserIdentity,
     @Param('facilityId') facilityId: string,
     @Body() dto: CreateBookingDto,
+    @Req() req: any,
   ) {
-    return this.bookingsService.create(organizationId, user.userId, facilityId, dto);
+    const idempotencyKey = req.headers['x-idempotency-key'];
+    return this.bookingsService.create(organizationId, user.userId, facilityId, dto, idempotencyKey);
   }
 
   @Get()
