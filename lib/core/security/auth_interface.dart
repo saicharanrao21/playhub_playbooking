@@ -24,6 +24,9 @@ abstract class IAuthRepository {
   /// Returns the current user identity if authenticated.
   UserIdentity? getCurrentIdentity();
 
+  /// Handles session expiration/compromise by clearing local state.
+  Future<void> handleSessionExpired();
+
   /// Stream of user identity changes.
   Stream<UserIdentity?> get identityChanges;
 

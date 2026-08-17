@@ -13,6 +13,7 @@ import '../../core/security/secure_storage.dart';
 import '../../core/security/auth_interface.dart';
 import '../../core/security/auth_repository_impl.dart';
 import '../../core/security/token_storage.dart';
+import '../../core/security/auth_events.dart';
 
 /// Provider for LocalStorage.
 final localStorageProvider = Provider<LocalStorage>((ref) {
@@ -46,7 +47,11 @@ final apiClientProvider = Provider<IApiClient>((ref) {
   );
 
   // Add Auth Interceptor
-  dio.interceptors.add(AuthInterceptor(tokenStorage, dio));
+  dio.interceptors.add(AuthInterceptor(
+    tokenStorage,
+    dio,
+    onExpired: () async => AuthEvents.notifySessionExpired(),
+  ));
 
   return DioApiClient(dio);
 });

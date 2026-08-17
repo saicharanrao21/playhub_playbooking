@@ -5,10 +5,11 @@ import '../logging/app_logger.dart';
 class AuthInterceptor extends Interceptor {
   final TokenStorage _tokenStorage;
   final Dio _dio;
+  final Future<void> Function()? onExpired;
   bool _isRefreshing = false;
   final _failedRequests = <Map<String, dynamic>>[];
 
-  AuthInterceptor(this._tokenStorage, this._dio);
+  AuthInterceptor(this._tokenStorage, this._dio, {this.onExpired});
 
   @override
   Future<void> onRequest(
@@ -76,7 +77,9 @@ class AuthInterceptor extends Interceptor {
         } catch (e) {
           AppLogger.error('Token refresh failed', e);
           await _tokenStorage.clearTokens();
-          // Trigger logout in AuthProvider if needed
+          if (onExpired != null) {
+            await onExpired!();
+          }
         } finally {
           _isRefreshing = false;
         }

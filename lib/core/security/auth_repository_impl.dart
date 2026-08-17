@@ -4,6 +4,7 @@ import '../models/app_models.dart';
 import '../networking/api_client_interface.dart';
 import 'auth_interface.dart';
 import 'token_storage.dart';
+import 'auth_events.dart';
 import '../logging/app_logger.dart';
 
 class AuthRepositoryImpl implements IAuthRepository {
@@ -13,7 +14,9 @@ class AuthRepositoryImpl implements IAuthRepository {
   final _identityController = StreamController<UserIdentity?>.broadcast();
   UserIdentity? _currentIdentity;
 
-  AuthRepositoryImpl(this._apiClient, this._tokenStorage);
+  AuthRepositoryImpl(this._apiClient, this._tokenStorage) {
+    AuthEvents.sessionExpired.listen((_) => handleSessionExpired());
+  }
 
   @override
   Future<void> initialize() async {
@@ -147,6 +150,14 @@ class AuthRepositoryImpl implements IAuthRepository {
 
   @override
   UserIdentity? getCurrentIdentity() => _currentIdentity;
+
+  @override
+  Future<void> handleSessionExpired() async {
+    AppLogger.warning('Session expired or compromised. Clearing local state.');
+    await _tokenStorage.clearTokens();
+    _currentIdentity = null;
+    _identityController.add(null);
+  }
 
   @override
   Stream<UserIdentity?> get identityChanges => _identityController.stream;
