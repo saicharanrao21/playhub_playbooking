@@ -1,16 +1,26 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playhub_playbooking/app/app.dart';
+import 'package:playhub_playbooking/app/bootstrap/bootstrap.dart';
+import 'package:playhub_playbooking/core/config/env_config.dart';
 
 void main() {
   testWidgets('PlayHub app smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    // Note: In real tests we would use Bootstrap.createContainer()
-    // but for a simple smoke test ProviderScope is enough if we don't
-    // hit providers that throw UnimplementedError.
-    await tester.pumpWidget(const ProviderScope(child: PlayHubApp()));
+    // 1. Properly initialize the container for tests
+    final container = await Bootstrap.createContainer(
+      config: EnvConfig.local(),
+    );
 
-    // Basic check to see if the app starts at /login
+    // 2. Build our app and trigger a frame.
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const PlayHubApp(),
+      ),
+    );
+
+    // 3. Basic check to see if the app starts at /login
+    // We expect 'Welcome to PlayHub' because initialLocation is /login
     expect(find.text('Welcome to PlayHub'), findsOneWidget);
   });
 }

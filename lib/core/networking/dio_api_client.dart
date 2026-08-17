@@ -5,12 +5,18 @@ import 'api_client_interface.dart';
 
 class DioApiClient implements IApiClient {
   final Dio _dio;
+  String? _authToken;
 
   DioApiClient(this._dio) {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
           AppLogger.debug('API Request: [${options.method}] ${options.uri}');
+
+          if (_authToken != null && options.extra['authenticated'] != false) {
+            options.headers['Authorization'] = 'Bearer $_authToken';
+          }
+
           if (options.data != null) {
             AppLogger.logSensitive(
               'Request Data',
@@ -38,16 +44,25 @@ class DioApiClient implements IApiClient {
   }
 
   @override
+  void setToken(String? token) {
+    _authToken = token;
+  }
+
+  @override
   Future<ApiResponse<T>> get<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
+    bool authenticated = true,
   }) async {
     try {
       final response = await _dio.get<T>(
         path,
         queryParameters: queryParameters,
-        options: Options(headers: headers),
+        options: Options(
+          headers: headers,
+          extra: {'authenticated': authenticated},
+        ),
       );
       return ApiResponse(
         data: response.data,
@@ -65,13 +80,17 @@ class DioApiClient implements IApiClient {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
+    bool authenticated = true,
   }) async {
     try {
       final response = await _dio.post<T>(
         path,
         data: data,
         queryParameters: queryParameters,
-        options: Options(headers: headers),
+        options: Options(
+          headers: headers,
+          extra: {'authenticated': authenticated},
+        ),
       );
       return ApiResponse(
         data: response.data,
@@ -89,13 +108,17 @@ class DioApiClient implements IApiClient {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
+    bool authenticated = true,
   }) async {
     try {
       final response = await _dio.put<T>(
         path,
         data: data,
         queryParameters: queryParameters,
-        options: Options(headers: headers),
+        options: Options(
+          headers: headers,
+          extra: {'authenticated': authenticated},
+        ),
       );
       return ApiResponse(
         data: response.data,
@@ -112,12 +135,16 @@ class DioApiClient implements IApiClient {
     String path, {
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
+    bool authenticated = true,
   }) async {
     try {
       final response = await _dio.delete<T>(
         path,
         queryParameters: queryParameters,
-        options: Options(headers: headers),
+        options: Options(
+          headers: headers,
+          extra: {'authenticated': authenticated},
+        ),
       );
       return ApiResponse(
         data: response.data,

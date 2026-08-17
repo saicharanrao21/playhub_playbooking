@@ -1,11 +1,13 @@
 /// Interface for the core API client.
-///
-/// Repositories should depend on this abstraction.
 abstract class IApiClient {
+  /// Sets the authorization token for subsequent requests.
+  void setToken(String? token);
+
   Future<ApiResponse<T>> get<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
+    bool authenticated = true,
   });
 
   Future<ApiResponse<T>> post<T>(
@@ -13,6 +15,7 @@ abstract class IApiClient {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
+    bool authenticated = true,
   });
 
   Future<ApiResponse<T>> put<T>(
@@ -20,12 +23,14 @@ abstract class IApiClient {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
+    bool authenticated = true,
   });
 
   Future<ApiResponse<T>> delete<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
+    bool authenticated = true,
   });
 }
 
@@ -35,4 +40,7 @@ class ApiResponse<T> {
   final String? statusMessage;
 
   ApiResponse({this.data, this.statusCode, this.statusMessage});
+
+  bool get isSuccess =>
+      statusCode != null && statusCode! >= 200 && statusCode! < 300;
 }

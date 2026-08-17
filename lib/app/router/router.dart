@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/security/auth_provider.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/venues/presentation/screens/venue_details_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
@@ -20,11 +21,26 @@ class PlaceholderScreen extends StatelessWidget {
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
-  // Future: Watch auth state to perform redirects
-  // final authState = ref.watch(authStateProvider);
+  final authState = ref.watch(authStateProvider);
 
   return GoRouter(
     initialLocation: '/login',
+    redirect: (context, state) {
+      final isLoggingIn = state.matchedLocation == '/login';
+      final isAuthenticated = authState.isAuthenticated;
+
+      if (authState.isInitializing) return null;
+
+      if (!isAuthenticated && !isLoggingIn) {
+        return '/login';
+      }
+
+      if (isAuthenticated && isLoggingIn) {
+        return '/';
+      }
+
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/',
@@ -70,7 +86,5 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AdminDashboardScreen(),
       ),
     ],
-    // Future: implement redirect logic based on auth state
-    // redirect: (context, state) { ... }
   );
 });

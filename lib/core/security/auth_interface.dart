@@ -1,12 +1,27 @@
-import '../models/app_models.dart';
+import '../models/auth_models.dart';
 
 /// Interface for Authentication.
-///
-/// Real implementation will be added in later phases.
 abstract class IAuthRepository {
-  Future<User?> login(String email, String password);
-  Future<User?> register(String name, String email, String password);
+  /// Initializes the auth state by restoring session from storage.
+  Future<void> initialize();
+
+  /// Performs login and returns the identity if successful.
+  Future<UserIdentity?> login(String email, String password);
+
+  /// Performs logout and clears local session.
   Future<void> logout();
-  Future<User?> getCurrentUser();
-  Stream<User?> get userChanges;
+
+  /// Refreshes the current session using a refresh token.
+  Future<UserIdentity?> refreshSession();
+
+  /// Returns the current user identity if authenticated.
+  UserIdentity? getCurrentIdentity();
+
+  /// Stream of user identity changes.
+  Stream<UserIdentity?> get identityChanges;
+
+  // Design for future expansion (Not implemented in this phase)
+  // Future<void> register(String name, String email, String password);
+  // Future<void> verifyOtp(String code);
+  // Future<void> requestPasswordReset(String email);
 }

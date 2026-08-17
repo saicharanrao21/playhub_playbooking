@@ -1,34 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/security/auth_provider.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
+    final user = authState.identity;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: ListView(
         children: [
           const SizedBox(height: 20),
-          const Center(
+          Center(
             child: Column(
               children: [
-                CircleAvatar(
+                const CircleAvatar(
                   radius: 50,
                   backgroundImage: NetworkImage(
                     'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400',
                   ),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Text(
-                  'John Doe',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  user?.name ?? 'Guest User',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
-                  'john.doe@example.com',
-                  style: TextStyle(color: Colors.grey),
+                  user?.email ?? 'Not logged in',
+                  style: const TextStyle(color: Colors.grey),
                 ),
+                if (user != null) ...[
+                  const SizedBox(height: 8),
+                  Chip(label: Text(user.role.name.toUpperCase())),
+                ],
               ],
             ),
           ),
@@ -57,13 +69,10 @@ class ProfileScreen extends StatelessWidget {
           ),
           const Divider(),
           _buildMenuItem(context, Icons.help_outline, 'Help & Support', () {}),
-          _buildMenuItem(
-            context,
-            Icons.logout,
-            'Logout',
-            () => context.go('/login'),
-            color: Colors.red,
-          ),
+          _buildMenuItem(context, Icons.logout, 'Logout', () {
+            ref.read(authStateProvider.notifier).logout();
+            // Redirect will be handled by GoRouter
+          }, color: Colors.red),
         ],
       ),
     );
