@@ -5,7 +5,6 @@ import 'api_client_interface.dart';
 
 class DioApiClient implements IApiClient {
   final Dio _dio;
-  String? _authToken;
   String? _organizationId;
 
   DioApiClient(this._dio) {
@@ -13,10 +12,6 @@ class DioApiClient implements IApiClient {
       InterceptorsWrapper(
         onRequest: (options, handler) {
           AppLogger.debug('API Request: [${options.method}] ${options.uri}');
-
-          if (_authToken != null && options.extra['authenticated'] != false) {
-            options.headers['Authorization'] = 'Bearer $_authToken';
-          }
 
           if (_organizationId != null) {
             options.headers['x-organization-id'] = _organizationId;
@@ -37,6 +32,8 @@ class DioApiClient implements IApiClient {
           return handler.next(response);
         },
         onError: (DioException e, handler) {
+          // If it's already handled by another interceptor (like AuthInterceptor),
+          // we might not want to log it as an "unhandled" error here.
           AppLogger.error(
             'API Error: [${e.response?.statusCode}] ${e.requestOptions.uri}',
             e,
@@ -50,7 +47,7 @@ class DioApiClient implements IApiClient {
 
   @override
   void setToken(String? token) {
-    _authToken = token;
+    // This is now handled by AuthInterceptor reading from TokenStorage
   }
 
   @override

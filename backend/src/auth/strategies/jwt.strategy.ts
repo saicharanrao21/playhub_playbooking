@@ -17,6 +17,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       userId: payload.sub,
       email: payload.email,
+      sid: payload.sid, // Session ID
       roles: payload.roles || [],
       permissions: payload.permissions || [],
       isPlatformAdmin: (payload.roles || []).includes('PLATFORM_ADMIN'),

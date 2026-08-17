@@ -4,12 +4,16 @@ import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { ApiExceptionFilter } from './common/filters/api-exception.filter';
+import { AuditInterceptor } from './common/interceptors/audit.interceptor';
+import { PrismaService } from './prisma/prisma.service';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
+  const prismaService = app.get(PrismaService);
   const port = configService.get<number>('PORT') || 3000;
   const apiPrefix = configService.get<string>('API_PREFIX') || 'api/v1';
 
@@ -22,6 +26,12 @@ async function bootstrap() {
 
   // Global Prefix
   app.setGlobalPrefix(apiPrefix);
+
+  // Global Filters
+  app.useGlobalFilters(new ApiExceptionFilter());
+
+  // Global Interceptors
+  app.useGlobalInterceptors(new AuditInterceptor(prismaService));
 
   // Validation
   app.useGlobalPipes(

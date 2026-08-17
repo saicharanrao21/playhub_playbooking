@@ -8,6 +8,7 @@ import '../../core/logging/app_logger.dart';
 import '../../core/storage/local_storage.dart';
 import '../../core/networking/dio_api_client.dart';
 import '../../core/networking/api_client_interface.dart';
+import '../../core/networking/auth_interceptor.dart';
 import '../../core/security/secure_storage.dart';
 import '../../core/security/auth_interface.dart';
 import '../../core/security/auth_repository_impl.dart';
@@ -34,6 +35,8 @@ final tokenStorageProvider = Provider<TokenStorage>((ref) {
 /// Provider for API Client.
 final apiClientProvider = Provider<IApiClient>((ref) {
   final config = ref.watch(appConfigProvider);
+  final tokenStorage = ref.watch(tokenStorageProvider);
+
   final dio = Dio(
     BaseOptions(
       baseUrl: config.apiBaseUrl,
@@ -41,6 +44,10 @@ final apiClientProvider = Provider<IApiClient>((ref) {
       receiveTimeout: const Duration(seconds: 10),
     ),
   );
+
+  // Add Auth Interceptor
+  dio.interceptors.add(AuthInterceptor(tokenStorage, dio));
+
   return DioApiClient(dio);
 });
 

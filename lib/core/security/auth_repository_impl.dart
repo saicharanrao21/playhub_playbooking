@@ -20,19 +20,16 @@ class AuthRepositoryImpl implements IAuthRepository {
     AppLogger.info('Initializing AuthRepository...');
     final token = await _tokenStorage.readAccessToken();
     if (token != null) {
-      // In a real app, we might validate the token or fetch user profile
-      // For now, we'll assume valid if token exists in dummy mode
-      _apiClient.setToken(token);
-
-      // Mock restoring identity
+      // For now, we assume token validity or let the first request trigger refresh
+      // In a real app, we'd fetch the user profile here
       _currentIdentity = const UserIdentity(
-        id: 'u1',
-        email: 'john@example.com',
-        name: 'John Doe',
+        id: 'restored',
+        email: 'restored@example.com',
+        name: 'Restored User',
         role: UserRole.customer,
       );
       _identityController.add(_currentIdentity);
-      AppLogger.info('Session restored for: ${_currentIdentity?.email}');
+      AppLogger.info('Session found in local storage.');
     } else {
       AppLogger.info('No existing session found.');
       _identityController.add(null);
@@ -43,28 +40,27 @@ class AuthRepositoryImpl implements IAuthRepository {
   Future<UserIdentity?> login(String email, String password) async {
     AppLogger.info('Attempting login for: $email');
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+    final response = await _apiClient.post(
+      '/auth/login',
+      data: {'email': email, 'password': password},
+      authenticated: false,
+    );
 
-    if (email == 'admin@playhub.com' && password == 'password') {
+    if (response.isSuccess) {
+      final data = response.data as Map<String, dynamic>;
+      final access = data['accessToken'];
+      final refresh = data['refreshToken'];
+
+      // In a real app, we would parse UserIdentity from the response
+      // For this phase, we'll create a dummy identity based on login success
       final identity = UserIdentity(
-        id: 'admin_1',
+        id: 'u1',
         email: email,
-        name: 'Admin User',
-        role: UserRole.admin,
+        name: email.split('@')[0],
+        role: email.contains('admin') ? UserRole.admin : UserRole.customer,
       );
 
-      await _saveSession('mock_access_token', 'mock_refresh_token', identity);
-      return identity;
-    } else if (email == 'user@playhub.com' && password == 'password') {
-      final identity = UserIdentity(
-        id: 'user_1',
-        email: email,
-        name: 'Regular User',
-        role: UserRole.customer,
-      );
-
-      await _saveSession('mock_access_token', 'mock_refresh_token', identity);
+      await _saveSession(access, refresh, identity);
       return identity;
     }
 
@@ -73,25 +69,80 @@ class AuthRepositoryImpl implements IAuthRepository {
   }
 
   @override
+  Future<UserIdentity?> register(
+    String email,
+    String password,
+    String fullName,
+  ) async {
+    AppLogger.info('Attempting registration for: $email');
+
+    final response = await _apiClient.post(
+      '/auth/register',
+      data: {
+        'email': email,
+        'password': password,
+        'fullName': fullName,
+      },
+      authenticated: false,
+    );
+
+    if (response.isSuccess) {
+      final data = response.data as Map<String, dynamic>;
+      final access = data['accessToken'];
+      final refresh = data['refreshToken'];
+
+      final identity = UserIdentity(
+        id: 'u_new',
+        email: email,
+        name: fullName,
+        role: UserRole.customer,
+      );
+
+      await _saveSession(access, refresh, identity);
+      return identity;
+    }
+
+    AppLogger.warning('Registration failed for: $email');
+    return null;
+  }
+
+  @override
   Future<void> logout() async {
     AppLogger.info('Logging out...');
+    try {
+      await _apiClient.post('/auth/logout');
+    } catch (e) {
+      AppLogger.error('Server-side logout failed', e);
+    }
+
     await _tokenStorage.clearTokens();
-    _apiClient.setToken(null);
     _currentIdentity = null;
     _identityController.add(null);
   }
 
   @override
   Future<UserIdentity?> refreshSession() async {
-    AppLogger.info('Refreshing session...');
+    AppLogger.info('Refreshing session manually...');
     final refreshToken = await _tokenStorage.readRefreshToken();
     if (refreshToken == null) return null;
 
-    // Simulate token refresh API call
-    await Future.delayed(const Duration(milliseconds: 500));
+    final response = await _apiClient.post(
+      '/auth/refresh',
+      data: {'refreshToken': refreshToken},
+      authenticated: false,
+    );
 
-    // In a real app, update tokens and identity
-    return _currentIdentity;
+    if (response.isSuccess) {
+      final data = response.data as Map<String, dynamic>;
+      final access = data['accessToken'];
+      final refresh = data['refreshToken'];
+
+      if (_currentIdentity != null) {
+        await _saveSession(access, refresh, _currentIdentity!);
+      }
+      return _currentIdentity;
+    }
+    return null;
   }
 
   @override
@@ -107,7 +158,6 @@ class AuthRepositoryImpl implements IAuthRepository {
   ) async {
     await _tokenStorage.saveAccessToken(access);
     await _tokenStorage.saveRefreshToken(refresh);
-    _apiClient.setToken(access);
     _currentIdentity = identity;
     _identityController.add(_currentIdentity);
   }

@@ -8,6 +8,13 @@ abstract class IAuthRepository {
   /// Performs login and returns the identity if successful.
   Future<UserIdentity?> login(String email, String password);
 
+  /// Performs registration and returns the identity if successful.
+  Future<UserIdentity?> register(
+    String email,
+    String password,
+    String fullName,
+  );
+
   /// Performs logout and clears local session.
   Future<void> logout();
 
