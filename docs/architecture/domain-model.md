@@ -37,6 +37,12 @@ The actual bookable resource (e.g., Football Turf, Badminton Court 1).
 - **Category:** Dynamic categories (Badminton, Cricket, etc.) defined in the `Category` model.
 - **Properties:** Capacity, display order, status.
 
+### 5. Booking
+A reservation for a specific facility and time interval.
+- **Relationship:** Scoped to an Organization and linked to a Facility and User.
+- **Lifecycle:** PENDING, CONFIRMED, CANCELLED, COMPLETED.
+- **Consistency:** Protected by transactional overlap checks.
+
 ## Foundational Domains
 
 ### Operating Hours

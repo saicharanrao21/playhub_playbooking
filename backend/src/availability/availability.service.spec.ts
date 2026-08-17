@@ -9,6 +9,7 @@ describe('AvailabilityService', () => {
   const mockPrisma = {
     facility: { findFirst: jest.fn() },
     availabilityBlock: { findMany: jest.fn() },
+    booking: { findMany: jest.fn() },
   };
 
   beforeEach(async () => {
@@ -36,6 +37,7 @@ describe('AvailabilityService', () => {
 
     mockPrisma.facility.findFirst.mockResolvedValue(mockFacility);
     mockPrisma.availabilityBlock.findMany.mockResolvedValue([]);
+    mockPrisma.booking.findMany.mockResolvedValue([]);
 
     const result = await service.getAvailability('org1', 'f1', '2026-08-20', 60);
 
@@ -60,6 +62,7 @@ describe('AvailabilityService', () => {
     mockPrisma.availabilityBlock.findMany.mockResolvedValue([
       { startTime: new Date('2026-08-20T10:00:00Z'), endTime: new Date('2026-08-20T11:00:00Z') },
     ]);
+    mockPrisma.booking.findMany.mockResolvedValue([]);
 
     const result = await service.getAvailability('org1', 'f1', '2026-08-20', 60);
 

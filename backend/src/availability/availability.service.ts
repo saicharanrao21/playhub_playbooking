@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { PrismaService } from '../prisma/prisma.service';
 import { DateTime } from 'luxon';
 import { TimeInterval } from '../common/utils/time-interval.util';
-import { DayOfWeek } from '@prisma/client';
+import { DayOfWeek, BookingStatus } from '@prisma/client';
 
 @Injectable()
 export class AvailabilityService {
@@ -73,25 +73,41 @@ export class AvailabilityService {
       return new TimeInterval(start, end);
     });
 
-    // 4. Fetch and Subtract Availability Blocks
+    // 4. Fetch and Subtract Availability Blocks & Bookings
     const startOfDay = date.toJSDate();
     const endOfDay = date.endOf('day').toJSDate();
 
-    const blocks = await this.prisma.availabilityBlock.findMany({
-      where: {
-        facilityId,
-        startTime: { lt: endOfDay },
-        endTime: { gt: startOfDay },
-      },
-    });
+    const [blocks, bookings] = await Promise.all([
+      this.prisma.availabilityBlock.findMany({
+        where: {
+          facilityId,
+          startTime: { lt: endOfDay },
+          endTime: { gt: startOfDay },
+        },
+      }),
+      this.prisma.booking.findMany({
+        where: {
+          facilityId,
+          status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+          startTime: { lt: endOfDay },
+          endTime: { gt: startOfDay },
+        },
+      }),
+    ]);
 
-    const blockIntervals = blocks.map(b => new TimeInterval(
-      DateTime.fromJSDate(b.startTime).setZone(timezone),
-      DateTime.fromJSDate(b.endTime).setZone(timezone),
-    ));
+    const subtractIntervals: TimeInterval[] = [
+      ...blocks.map(b => new TimeInterval(
+        DateTime.fromJSDate(b.startTime).setZone(timezone),
+        DateTime.fromJSDate(b.endTime).setZone(timezone),
+      )),
+      ...bookings.map(b => new TimeInterval(
+        DateTime.fromJSDate(b.startTime).setZone(timezone),
+        DateTime.fromJSDate(b.endTime).setZone(timezone),
+      )),
+    ];
 
-    // Subtract blocks from operating hours
-    availableIntervals = TimeInterval.subtractMany(availableIntervals, blockIntervals);
+    // Subtract blocks and bookings from operating hours
+    availableIntervals = TimeInterval.subtractMany(availableIntervals, subtractIntervals);
 
     // 5. Slot Generation
     const slots: TimeInterval[] = [];

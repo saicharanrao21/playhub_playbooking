@@ -46,6 +46,13 @@ enum FacilityStatus {
   ARCHIVED
 }
 
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
 enum DayOfWeek {
   MONDAY
   TUESDAY
@@ -78,6 +85,7 @@ model User {
   memberships Membership[]
   sessions    Session[]
   auditLogs   AuditLog[]
+  bookings    Booking[]
 
   @@map("users")
 }
@@ -92,6 +100,7 @@ model Organization {
 
   memberships Membership[]
   businesses  Business[]
+  bookings    Booking[]
 
   @@map("organizations")
 }
@@ -210,11 +219,37 @@ model Facility {
   category          Category            @relation(fields: [categoryId], references: [id])
   availabilityBlocks AvailabilityBlock[]
   pricingRules      PricingRule[]
+  bookings          Booking[]
 
   @@index([venueId])
   @@index([categoryId])
   @@index([status])
   @@map("facilities")
+}
+
+model Booking {
+  id             String        @id @default(uuid())
+  organizationId String
+  facilityId     String
+  userId         String
+  startTime      DateTime
+  endTime        DateTime
+  status         BookingStatus @default(PENDING)
+  totalPrice     Decimal?      @db.Decimal(12, 2)
+  currency       String?       @default("INR")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  facility     Facility     @relation(fields: [facilityId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@index([facilityId])
+  @@index([userId])
+  @@index([startTime, endTime])
+  @@index([status])
+  @@map("bookings")
 }
 
 model OperatingHours {

@@ -8,6 +8,7 @@ import { BusinessesModule } from './businesses/businesses.module';
 import { VenuesModule } from './venues/venues.module';
 import { FacilitiesModule } from './facilities/facilities.module';
 import { AvailabilityModule } from './availability/availability.module';
+import { BookingsModule } from './bookings/bookings.module';
 import { HealthController } from './health/health.controller';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
@@ -25,6 +26,7 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
     VenuesModule,
     FacilitiesModule,
     AvailabilityModule,
+    BookingsModule,
   ],
   controllers: [HealthController],
   providers: [],
