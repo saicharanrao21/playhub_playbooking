@@ -1,0 +1,35 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateBusinessDto } from './dto/create-business.dto';
+
+@Injectable()
+export class BusinessesService {
+  constructor(private prisma: PrismaService) {}
+
+  async create(organizationId: string, dto: CreateBusinessDto) {
+    return this.prisma.business.create({
+      data: {
+        ...dto,
+        organizationId,
+      },
+    });
+  }
+
+  async findAll(organizationId: string) {
+    return this.prisma.business.findMany({
+      where: { organizationId },
+    });
+  }
+
+  async findOne(organizationId: string, id: string) {
+    const business = await this.prisma.business.findFirst({
+      where: { id, organizationId },
+    });
+
+    if (!business) {
+      throw new NotFoundException('Business not found');
+    }
+
+    return business;
+  }
+}

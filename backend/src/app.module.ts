@@ -4,6 +4,9 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { OrganizationsModule } from './organizations/organizations.module';
+import { BusinessesModule } from './businesses/businesses.module';
+import { VenuesModule } from './venues/venues.module';
+import { FacilitiesModule } from './facilities/facilities.module';
 import { HealthController } from './health/health.controller';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
@@ -17,6 +20,9 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
     AuthModule,
     UsersModule,
     OrganizationsModule,
+    BusinessesModule,
+    VenuesModule,
+    FacilitiesModule,
   ],
   controllers: [HealthController],
   providers: [],

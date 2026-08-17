@@ -18,58 +18,105 @@ enum AccountStatus {
   DELETED
 }
 
-model User {
-  id               String        @id @default(uuid())
-  email            String        @unique
-  phoneNumber      String?       @unique
-  fullName         String?
-  passwordHash     String?
-  status           AccountStatus @default(ACTIVE)
-  isEmailVerified  Boolean       @default(false)
-  isPhoneVerified  Boolean       @default(false)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
 
-  memberships      Membership[]
-  sessions         Session[]
-  auditLogs        AuditLog[]
+enum BusinessStatus {
+  PENDING_ONBOARDING
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum VenueStatus {
+  DRAFT
+  PENDING_APPROVAL
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum FacilityStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  ARCHIVED
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum BlockReason {
+  MAINTENANCE
+  HOLIDAY
+  BUSINESS_CLOSE
+  OTHER
+}
+
+model User {
+  id              String        @id @default(uuid())
+  email           String        @unique
+  phoneNumber     String?       @unique
+  fullName        String?
+  passwordHash    String?
+  status          AccountStatus @default(ACTIVE)
+  isEmailVerified Boolean       @default(false)
+  isPhoneVerified Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  memberships Membership[]
+  sessions    Session[]
+  auditLogs   AuditLog[]
 
   @@map("users")
 }
 
 model Organization {
-  id          String       @id @default(uuid())
-  name        String
-  slug        String       @unique
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id        String             @id @default(uuid())
+  name      String
+  slug      String             @unique
+  status    OrganizationStatus @default(ACTIVE)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
 
   memberships Membership[]
+  businesses  Business[]
 
   @@map("organizations")
 }
 
 model Membership {
-  id             String       @id @default(uuid())
+  id             String   @id @default(uuid())
   userId         String
   organizationId String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  user           User         @relation(fields: [userId], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  roles          Role[]       @relation("MembershipRoles")
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  roles        Role[]       @relation("MembershipRoles")
 
   @@unique([userId, organizationId])
   @@map("memberships")
 }
 
 model Role {
-  id          String       @id @default(uuid())
-  name        String       @unique
+  id          String   @id @default(uuid())
+  name        String   @unique
   description String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   permissions Permission[] @relation("RolePermissions")
   memberships Membership[] @relation("MembershipRoles")
@@ -79,32 +126,158 @@ model Role {
 
 model Permission {
   id          String   @id @default(uuid())
-  action      String   // e.g., 'read', 'create'
-  resource    String   // e.g., 'venue', 'booking'
+  action      String // e.g., 'read', 'create'
+  resource    String // e.g., 'venue', 'booking'
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  roles       Role[]   @relation("RolePermissions")
+  roles Role[] @relation("RolePermissions")
 
   @@unique([action, resource])
   @@map("permissions")
 }
 
-model Session {
-  id           String   @id @default(uuid())
-  userId       String
-  deviceId     String?
-  deviceType   String?
-  ipAddress    String?
-  userAgent    String?
-  isActive     Boolean  @default(true)
-  expiresAt    DateTime
-  lastUsedAt   DateTime @default(now())
-  createdAt    DateTime @default(now())
-  revokedAt    DateTime?
+model Business {
+  id             String         @id @default(uuid())
+  organizationId String
+  legalName      String
+  displayName    String
+  status         BusinessStatus @default(PENDING_ONBOARDING)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
-  user         User     @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  venues       Venue[]
+
+  @@index([organizationId])
+  @@map("businesses")
+}
+
+model Venue {
+  id          String      @id @default(uuid())
+  businessId  String
+  name        String
+  slug        String
+  description String?
+  address     String
+  city        String
+  state       String
+  country     String
+  postalCode  String
+  latitude    Float?
+  longitude   Float?
+  timezone    String      @default("UTC")
+  status      VenueStatus @default(DRAFT)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  business       Business         @relation(fields: [businessId], references: [id])
+  facilities     Facility[]
+  operatingHours OperatingHours[]
+
+  @@unique([businessId, slug])
+  @@index([businessId])
+  @@index([city])
+  @@index([status])
+  @@map("venues")
+}
+
+model Category {
+  id   String @id @default(uuid())
+  name String @unique
+  slug String @unique
+  icon String?
+
+  facilities Facility[]
+
+  @@map("categories")
+}
+
+model Facility {
+  id           String         @id @default(uuid())
+  venueId      String
+  categoryId   String
+  name         String
+  description  String?
+  capacity     Int?
+  status       FacilityStatus @default(ACTIVE)
+  displayOrder Int            @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  venue             Venue               @relation(fields: [venueId], references: [id])
+  category          Category            @relation(fields: [categoryId], references: [id])
+  availabilityBlocks AvailabilityBlock[]
+  pricingRules      PricingRule[]
+
+  @@index([venueId])
+  @@index([categoryId])
+  @@index([status])
+  @@map("facilities")
+}
+
+model OperatingHours {
+  id          String    @id @default(uuid())
+  venueId     String
+  dayOfWeek   DayOfWeek
+  openingTime String // HH:mm format
+  closingTime String // HH:mm format
+  isClosed    Boolean   @default(false)
+
+  venue Venue @relation(fields: [venueId], references: [id])
+
+  @@unique([venueId, dayOfWeek])
+  @@map("operating_hours")
+}
+
+model AvailabilityBlock {
+  id         String      @id @default(uuid())
+  facilityId String
+  startTime  DateTime
+  endTime    DateTime
+  reason     BlockReason @default(OTHER)
+  notes      String?
+  createdAt  DateTime    @default(now())
+
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  @@index([facilityId])
+  @@index([startTime, endTime])
+  @@map("availability_blocks")
+}
+
+model PricingRule {
+  id            String    @id @default(uuid())
+  facilityId    String
+  name          String
+  basePrice     Decimal   @db.Decimal(12, 2)
+  currency      String    @default("INR")
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  @@index([facilityId])
+  @@map("pricing_rules")
+}
+
+model Session {
+  id         String    @id @default(uuid())
+  userId     String
+  deviceId   String?
+  deviceType String?
+  ipAddress  String?
+  userAgent  String?
+  isActive   Boolean   @default(true)
+  expiresAt  DateTime
+  lastUsedAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+
+  user          User           @relation(fields: [userId], references: [id])
   refreshTokens RefreshToken[]
 
   @@map("sessions")
@@ -119,23 +292,23 @@ model RefreshToken {
   expiresAt DateTime
   createdAt DateTime @default(now())
 
-  session   Session  @relation(fields: [sessionId], references: [id])
+  session Session @relation(fields: [sessionId], references: [id])
 
   @@map("refresh_tokens")
 }
 
 model AuditLog {
-  id             String   @id @default(uuid())
-  userId         String?
-  action         String
-  resource       String?
-  resourceId     String?
-  payload        Json?
-  ipAddress      String?
-  status         String   // 'success' or 'failure'
-  createdAt      DateTime @default(now())
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  resource   String?
+  resourceId String?
+  payload    Json?
+  ipAddress  String?
+  status     String // 'success' or 'failure'
+  createdAt  DateTime @default(now())
 
-  user           User?    @relation(fields: [userId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
 }
