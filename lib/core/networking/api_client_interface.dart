@@ -3,6 +3,9 @@ abstract class IApiClient {
   /// Sets the authorization token for subsequent requests.
   void setToken(String? token);
 
+  /// Sets the organization context for subsequent requests.
+  void setOrganizationId(String? organizationId);
+
   Future<ApiResponse<T>> get<T>(
     String path, {
     Map<String, dynamic>? queryParameters,

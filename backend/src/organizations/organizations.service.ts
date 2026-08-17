@@ -8,4 +8,22 @@ export class OrganizationsService {
   async findAll() {
     return this.prisma.organization.findMany();
   }
+
+  async getMembership(userId: string, organizationId: string) {
+    return this.prisma.membership.findUnique({
+      where: {
+        userId_organizationId: {
+          userId,
+          organizationId,
+        },
+      },
+      include: {
+        roles: {
+          include: {
+            permissions: true,
+          },
+        },
+      },
+    });
+  }
 }

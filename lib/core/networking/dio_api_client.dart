@@ -6,6 +6,7 @@ import 'api_client_interface.dart';
 class DioApiClient implements IApiClient {
   final Dio _dio;
   String? _authToken;
+  String? _organizationId;
 
   DioApiClient(this._dio) {
     _dio.interceptors.add(
@@ -15,6 +16,10 @@ class DioApiClient implements IApiClient {
 
           if (_authToken != null && options.extra['authenticated'] != false) {
             options.headers['Authorization'] = 'Bearer $_authToken';
+          }
+
+          if (_organizationId != null) {
+            options.headers['x-organization-id'] = _organizationId;
           }
 
           if (options.data != null) {
@@ -46,6 +51,11 @@ class DioApiClient implements IApiClient {
   @override
   void setToken(String? token) {
     _authToken = token;
+  }
+
+  @override
+  void setOrganizationId(String? organizationId) {
+    _organizationId = organizationId;
   }
 
   @override
