@@ -55,3 +55,13 @@ The `PricingRule` model establishes a base price and currency per Facility.
 - **Ownership Verification:** Every mutation (Create, Update, Delete) verifies that the target resource belongs to the authorized `organizationId` from the JWT context.
 - **IDOR Protection:** Database queries use composite filters (e.g., `where: { id: facilityId, venue: { business: { organizationId } } }`).
 - **Auditability:** All domain mutations are captured by the `AuditInterceptor`.
+
+## Operator Flow (E2E)
+1. **User Login:** Authenticated session associated with one or more Organizations.
+2. **Context Selection:** Client selects an Organization and sets `x-organization-id` header.
+3. **Business Management:** CRUD operations on Businesses within the organization.
+4. **Venue Management:** Creation of Venues, definition of location and timezone.
+5. **Operational Setup:** 
+   - Define Operating Hours in venue-local time.
+   - Configure Facilities (Courts/Turfs).
+   - Manage Availability Blocks (Maintenance/Holidays).

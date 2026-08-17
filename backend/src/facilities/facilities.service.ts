@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFacilityDto } from './dto/create-facility.dto';
+import { UpdateFacilityDto } from './dto/update-facility.dto';
+import { CreateBlockDto } from './dto/create-block.dto';
 
 @Injectable()
 export class FacilitiesService {
@@ -67,5 +69,42 @@ export class FacilitiesService {
     }
 
     return facility;
+  }
+
+  async update(organizationId: string, id: string, dto: UpdateFacilityDto) {
+    await this.findOne(organizationId, id);
+
+    return this.prisma.facility.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async createBlock(organizationId: string, facilityId: string, dto: CreateBlockDto) {
+    await this.findOne(organizationId, facilityId);
+
+    const start = new Date(dto.startTime);
+    const end = new Date(dto.endTime);
+
+    if (start >= end) {
+      throw new ConflictException('Start time must be before end time');
+    }
+
+    return this.prisma.availabilityBlock.create({
+      data: {
+        ...dto,
+        startTime: start,
+        endTime: end,
+        facilityId,
+      },
+    });
+  }
+
+  async deleteBlock(organizationId: string, facilityId: string, blockId: string) {
+    await this.findOne(organizationId, facilityId);
+
+    return this.prisma.availabilityBlock.delete({
+      where: { id: blockId, facilityId },
+    });
   }
 }

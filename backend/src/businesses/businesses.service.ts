@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
+import { UpdateBusinessDto } from './dto/update-business.dto';
 
 @Injectable()
 export class BusinessesService {
@@ -31,5 +32,15 @@ export class BusinessesService {
     }
 
     return business;
+  }
+
+  async update(organizationId: string, id: string, dto: UpdateBusinessDto) {
+    // Ensure business belongs to organization
+    await this.findOne(organizationId, id);
+
+    return this.prisma.business.update({
+      where: { id },
+      data: dto,
+    });
   }
 }

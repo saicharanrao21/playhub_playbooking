@@ -1,7 +1,9 @@
-import { Controller, Get, Post, Body, UseGuards, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, UseGuards, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { VenuesService } from './venues.service';
 import { CreateVenueDto } from './dto/create-venue.dto';
+import { UpdateVenueDto } from './dto/update-venue.dto';
+import { OperatingHoursDto } from './dto/operating-hours.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
@@ -30,10 +32,10 @@ export class VenuesController {
 
   @Get()
   @RequirePermission(Permissions.VENUE_READ)
-  @ApiOperation({ summary: 'List all venues for a business' })
+  @ApiOperation({ summary: 'List all venues for a business or organization' })
   async findAll(
     @OrganizationContext() organizationId: string,
-    @Query('businessId') businessId: string,
+    @Query('businessId') businessId?: string,
   ) {
     return this.venuesService.findAll(organizationId, businessId);
   }
@@ -46,5 +48,27 @@ export class VenuesController {
     @Param('id') id: string,
   ) {
     return this.venuesService.findOne(organizationId, id);
+  }
+
+  @Patch(':id')
+  @RequirePermission(Permissions.VENUE_UPDATE)
+  @ApiOperation({ summary: 'Update a venue' })
+  async update(
+    @OrganizationContext() organizationId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateVenueDto,
+  ) {
+    return this.venuesService.update(organizationId, id, dto);
+  }
+
+  @Patch(':id/operating-hours')
+  @RequirePermission(Permissions.VENUE_UPDATE) // Or dedicated permission if preferred
+  @ApiOperation({ summary: 'Update venue operating hours' })
+  async updateOperatingHours(
+    @OrganizationContext() organizationId: string,
+    @Param('id') id: string,
+    @Body() hours: OperatingHoursDto[],
+  ) {
+    return this.venuesService.updateOperatingHours(organizationId, id, hours);
   }
 }

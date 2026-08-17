@@ -138,6 +138,34 @@ class DioApiClient implements IApiClient {
   }
 
   @override
+  Future<ApiResponse<T>> patch<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Map<String, dynamic>? headers,
+    bool authenticated = true,
+  }) async {
+    try {
+      final response = await _dio.patch<T>(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: Options(
+          headers: headers,
+          extra: {'authenticated': authenticated},
+        ),
+      );
+      return ApiResponse(
+        data: response.data,
+        statusCode: response.statusCode,
+        statusMessage: response.statusMessage,
+      );
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  @override
   Future<ApiResponse<T>> delete<T>(
     String path, {
     Map<String, dynamic>? queryParameters,

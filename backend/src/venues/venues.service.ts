@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateVenueDto } from './dto/create-venue.dto';
+import { UpdateVenueDto } from './dto/update-venue.dto';
+import { OperatingHoursDto } from './dto/operating-hours.dto';
 
 @Injectable()
 export class VenuesService {
@@ -38,12 +40,12 @@ export class VenuesService {
     });
   }
 
-  async findAll(organizationId: string, businessId: string) {
+  async findAll(organizationId: string, businessId?: string) {
     return this.prisma.venue.findMany({
       where: {
         business: {
-          id: businessId,
           organizationId,
+          ...(businessId ? { id: businessId } : {}),
         },
       },
     });
@@ -68,5 +70,40 @@ export class VenuesService {
     }
 
     return venue;
+  }
+
+  async update(organizationId: string, id: string, dto: UpdateVenueDto) {
+    await this.findOne(organizationId, id);
+
+    return this.prisma.venue.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async updateOperatingHours(organizationId: string, venueId: string, hours: OperatingHoursDto[]) {
+    await this.findOne(organizationId, venueId);
+
+    // Validate times
+    for (const h of hours) {
+      if (!h.isClosed && h.openingTime >= h.closingTime) {
+        throw new ConflictException(`Invalid hours for ${h.dayOfWeek}: Opening time must be before closing time`);
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Clear existing hours for this venue
+      await tx.operatingHours.deleteMany({
+        where: { venueId },
+      });
+
+      // 2. Create new hours
+      return tx.operatingHours.createMany({
+        data: hours.map(h => ({
+          ...h,
+          venueId,
+        })),
+      });
+    });
   }
 }

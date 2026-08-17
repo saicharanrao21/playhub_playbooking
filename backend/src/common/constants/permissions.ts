@@ -16,4 +16,8 @@ export const Permissions = {
   FACILITY_READ: 'read:facility',
   FACILITY_UPDATE: 'update:facility',
   FACILITY_DELETE: 'delete:facility',
+
+  AVAILABILITY_BLOCK_CREATE: 'create:availability_block',
+  AVAILABILITY_BLOCK_READ: 'read:availability_block',
+  AVAILABILITY_BLOCK_DELETE: 'delete:availability_block',
 };

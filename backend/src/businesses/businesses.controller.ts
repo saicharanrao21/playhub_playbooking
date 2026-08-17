@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, UseGuards, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, UseGuards, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { BusinessesService } from './businesses.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
+import { UpdateBusinessDto } from './dto/update-business.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
@@ -42,5 +43,16 @@ export class BusinessesController {
     @Param('id') id: string,
   ) {
     return this.businessesService.findOne(organizationId, id);
+  }
+
+  @Patch(':id')
+  @RequirePermission(Permissions.BUSINESS_UPDATE)
+  @ApiOperation({ summary: 'Update a business' })
+  async update(
+    @OrganizationContext() organizationId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateBusinessDto,
+  ) {
+    return this.businessesService.update(organizationId, id, dto);
   }
 }

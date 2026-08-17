@@ -29,6 +29,14 @@ abstract class IApiClient {
     bool authenticated = true,
   });
 
+  Future<ApiResponse<T>> patch<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Map<String, dynamic>? headers,
+    bool authenticated = true,
+  });
+
   Future<ApiResponse<T>> delete<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
