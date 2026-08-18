@@ -53,6 +53,22 @@ enum BookingStatus {
   COMPLETED
 }
 
+enum PaymentStatus {
+  INITIATED
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  RAZORPAY
+  STRIPE
+  MOCK
+}
+
 enum DayOfWeek {
   MONDAY
   TUESDAY
@@ -101,6 +117,7 @@ model Organization {
   memberships Membership[]
   businesses  Business[]
   bookings    Booking[]
+  payments    Payment[]
 
   @@map("organizations")
 }
@@ -244,6 +261,7 @@ model Booking {
   organization Organization @relation(fields: [organizationId], references: [id])
   facility     Facility     @relation(fields: [facilityId], references: [id])
   user         User         @relation(fields: [userId], references: [id])
+  payments     Payment[]
 
   @@index([organizationId])
   @@index([facilityId])
@@ -298,6 +316,30 @@ model PricingRule {
 
   @@index([facilityId])
   @@map("pricing_rules")
+}
+
+model Payment {
+  id                String          @id @default(uuid())
+  organizationId    String
+  bookingId         String
+  amount            Decimal         @db.Decimal(12, 2)
+  currency          String          @default("INR")
+  status            PaymentStatus   @default(INITIATED)
+  provider          PaymentProvider
+  providerOrderId   String?         @unique
+  providerPaymentId String?         @unique
+  providerSignature String?
+  idempotencyKey    String?         @unique
+  metadata          Json?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  booking      Booking      @relation(fields: [bookingId], references: [id])
+
+  @@index([organizationId])
+  @@index([bookingId])
+  @@map("payments")
 }
 
 model Session {
