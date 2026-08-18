@@ -7,11 +7,7 @@ import 'package:playhub_playbooking/core/security/auth_provider.dart';
 final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   final authState = ref.watch(authStateProvider);
-  
-  // For this foundation, we use a placeholder or derived organization ID.
-  // In a real multi-tenant app, this would be part of the UserIdentity or selected in-app.
-  final orgId = authState.identity != null ? 'default-org-id' : 'default-org-id';
-  
+  final orgId = authState.identity?.organizationId ?? '';
   return NotificationRepository(apiClient, orgId);
 });
 

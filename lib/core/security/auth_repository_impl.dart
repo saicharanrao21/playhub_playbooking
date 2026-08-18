@@ -23,16 +23,18 @@ class AuthRepositoryImpl implements IAuthRepository {
     AppLogger.info('Initializing AuthRepository...');
     final token = await _tokenStorage.readAccessToken();
     if (token != null) {
-      // For now, we assume token validity or let the first request trigger refresh
-      // In a real app, we'd fetch the user profile here
-      _currentIdentity = const UserIdentity(
-        id: 'restored',
-        email: 'restored@example.com',
-        name: 'Restored User',
-        role: UserRole.customer,
-      );
-      _identityController.add(_currentIdentity);
-      AppLogger.info('Session found in local storage.');
+      try {
+        final identity = await _fetchProfile();
+        if (identity != null) {
+          _currentIdentity = identity;
+          _identityController.add(_currentIdentity);
+          AppLogger.info('Session restored and profile fetched.');
+        } else {
+          await handleSessionExpired();
+        }
+      } catch (e) {
+        AppLogger.error('Failed to restore session profile', e);
+      }
     } else {
       AppLogger.info('No existing session found.');
       _identityController.add(null);
@@ -54,20 +56,25 @@ class AuthRepositoryImpl implements IAuthRepository {
       final access = data['accessToken'];
       final refresh = data['refreshToken'];
 
-      // In a real app, we would parse UserIdentity from the response
-      // For this phase, we'll create a dummy identity based on login success
-      final identity = UserIdentity(
-        id: 'u1',
-        email: email,
-        name: email.split('@')[0],
-        role: email.contains('admin') ? UserRole.admin : UserRole.customer,
-      );
+      await _tokenStorage.saveAccessToken(access);
+      await _tokenStorage.saveRefreshToken(refresh);
 
-      await _saveSession(access, refresh, identity);
-      return identity;
+      final identity = await _fetchProfile();
+      if (identity != null) {
+        await _saveSession(access, refresh, identity);
+        return identity;
+      }
     }
 
     AppLogger.warning('Login failed for: $email');
+    return null;
+  }
+
+  Future<UserIdentity?> _fetchProfile() async {
+    final response = await _apiClient.get('/auth/me');
+    if (response.isSuccess) {
+      return UserIdentity.fromJson(response.data);
+    }
     return null;
   }
 

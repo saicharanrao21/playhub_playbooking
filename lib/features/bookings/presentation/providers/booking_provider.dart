@@ -7,7 +7,7 @@ import 'package:playhub_playbooking/core/security/auth_provider.dart';
 final bookingRepositoryProvider = Provider<BookingRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   final authState = ref.watch(authStateProvider);
-  final orgId = authState.identity != null ? 'default-org-id' : 'default-org-id'; 
+  final orgId = authState.identity?.organizationId ?? '';
   return BookingRepository(apiClient, orgId);
 });
 
