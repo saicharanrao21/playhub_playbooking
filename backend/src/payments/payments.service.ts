@@ -11,13 +11,45 @@ import { Events } from '../common/constants/events';
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
 
+  private readonly TERMINAL_STATES: PaymentStatus[] = [
+    PaymentStatus.CAPTURED,
+    PaymentStatus.FAILED,
+    PaymentStatus.CANCELLED,
+    PaymentStatus.REFUNDED,
+  ];
+
   constructor(
     private prisma: PrismaService,
     @Inject(PAYMENT_PROVIDER) private provider: IPaymentProvider,
     private eventEmitter: EventEmitter2,
   ) {}
 
-  async createOrder(organizationId: string, userId: string, dto: CreatePaymentOrderDto) {
+  /**
+   * Validates if a transition from current status to next status is allowed.
+   */
+  private canTransition(current: PaymentStatus, next: PaymentStatus): boolean {
+    if (current === next) return true;
+    if (this.TERMINAL_STATES.includes(current) && next !== PaymentStatus.REFUNDED) {
+      return false;
+    }
+    if (current === PaymentStatus.CAPTURED && next === PaymentStatus.REFUNDED) {
+      return true;
+    }
+
+    const allowed: Record<PaymentStatus, PaymentStatus[]> = {
+      [PaymentStatus.INITIATED]: [PaymentStatus.PENDING, PaymentStatus.AUTHORIZED, PaymentStatus.CAPTURED, PaymentStatus.FAILED, PaymentStatus.CANCELLED],
+      [PaymentStatus.PENDING]: [PaymentStatus.AUTHORIZED, PaymentStatus.CAPTURED, PaymentStatus.FAILED, PaymentStatus.CANCELLED],
+      [PaymentStatus.AUTHORIZED]: [PaymentStatus.CAPTURED, PaymentStatus.FAILED, PaymentStatus.CANCELLED],
+      [PaymentStatus.CAPTURED]: [PaymentStatus.REFUNDED],
+      [PaymentStatus.FAILED]: [],
+      [PaymentStatus.CANCELLED]: [],
+      [PaymentStatus.REFUNDED]: [],
+    };
+
+    return allowed[current]?.includes(next) || false;
+  }
+
+  async createOrder(organizationId: string, userId: string, dto: CreatePaymentOrderDto, idempotencyKey?: string) {
     const booking = await this.prisma.booking.findFirst({
       where: { id: dto.bookingId, organizationId },
       include: { payments: true }
@@ -31,7 +63,20 @@ export class PaymentsService {
       throw new BadRequestException('Cannot pay for a cancelled booking');
     }
 
-    // Check for existing successful or pending payments
+    // 1. Idempotency Check
+    if (idempotencyKey) {
+      const existing = await this.prisma.payment.findUnique({
+        where: { idempotencyKey }
+      });
+      if (existing) {
+        if (existing.bookingId !== dto.bookingId || existing.organizationId !== organizationId) {
+          throw new ConflictException('Idempotency key mismatch');
+        }
+        return existing;
+      }
+    }
+
+    // 2. Check for existing successful or authorized payments
     const activePayment = booking.payments.find(p =>
       p.status === PaymentStatus.CAPTURED || p.status === PaymentStatus.AUTHORIZED
     );
@@ -39,8 +84,6 @@ export class PaymentsService {
       throw new ConflictException('Booking is already paid or authorized');
     }
 
-    // Amount integrity: server-calculated
-    // For this phase, we assume totalPrice is set. If not, we'd calculate it.
     if (!booking.totalPrice) {
        throw new BadRequestException('Booking has no price associated');
     }
@@ -61,8 +104,9 @@ export class PaymentsService {
         amount: booking.totalPrice,
         currency: booking.currency || 'INR',
         status: PaymentStatus.INITIATED,
-        provider: PaymentProvider.MOCK, // Future: read from config/org
+        provider: PaymentProvider.MOCK,
         providerOrderId: order.id,
+        idempotencyKey,
       }
     });
   }
@@ -81,13 +125,24 @@ export class PaymentsService {
        return { status: 'success', booking: payment.booking };
     }
 
-    // Authoritative verification
+    if (!this.canTransition(payment.status, PaymentStatus.CAPTURED)) {
+      throw new BadRequestException(`Invalid state transition from ${payment.status} to CAPTURED`);
+    }
+
     const isValid = this.provider.verifySignature(dto, dto.signature);
     if (!isValid) {
       throw new BadRequestException('Invalid payment signature');
     }
 
     return this.prisma.$transaction(async (tx) => {
+      // Re-verify status inside transaction for concurrency safety
+      const latestPayment = await tx.payment.findUnique({
+        where: { id: payment.id }
+      });
+      if (latestPayment.status === PaymentStatus.CAPTURED) {
+        return { status: 'success', booking: payment.booking };
+      }
+
       // 1. Update Payment record
       const updatedPayment = await tx.payment.update({
         where: { id: payment.id },
@@ -108,6 +163,9 @@ export class PaymentsService {
         data: {
           status: BookingStatus.CONFIRMED,
         }
+      }).catch(() => {
+        this.logger.warn(`Attempted to confirm a cancelled booking: ${payment.bookingId}`);
+        return null;
       });
 
       // 3. Audit
@@ -115,54 +173,56 @@ export class PaymentsService {
         data: {
           userId,
           action: 'payment:captured',
-          resource: 'booking',
-          resourceId: updatedBooking.id,
+          resource: 'payment',
+          resourceId: updatedPayment.id,
           status: 'success',
-          payload: { paymentId: updatedPayment.id, providerOrderId: dto.providerOrderId }
+          payload: {
+            bookingId: payment.bookingId,
+            previousStatus: payment.status,
+            newStatus: updatedPayment.status
+          }
         }
       });
 
       this.eventEmitter.emit(Events.PAYMENT_CAPTURED, {
         paymentId: updatedPayment.id,
-        bookingId: updatedBooking.id,
+        bookingId: payment.bookingId,
         organizationId: updatedPayment.organizationId,
         userId: userId,
         amount: updatedPayment.amount,
       });
 
-      // confirmed status already updated in DB, emit event for notification
-      this.eventEmitter.emit(Events.BOOKING_CONFIRMED, {
-        bookingId: updatedBooking.id,
-        organizationId: updatedBooking.organizationId,
-        userId: updatedBooking.userId,
-        facilityName: 'facility', // Simplified for foundation
-        startTime: updatedBooking.startTime,
-      });
+      if (updatedBooking) {
+        this.eventEmitter.emit(Events.BOOKING_CONFIRMED, {
+          bookingId: updatedBooking.id,
+          organizationId: updatedBooking.organizationId,
+          userId: updatedBooking.userId,
+          facilityName: 'facility',
+          startTime: updatedBooking.startTime,
+        });
+      }
 
-      return { status: 'success', booking: updatedBooking };
-    });
+      return { status: 'success', booking: updatedBooking || payment.booking };
+    }, { isolationLevel: 'Serializable' });
   }
 
   async handleWebhook(provider: string, payload: any, signature: string) {
     this.logger.log(`Received webhook for ${provider}`);
 
-    // 1. Verify Signature (Mock logic for now)
     const isValid = this.provider.verifySignature(payload, signature);
     if (!isValid) {
       this.logger.warn(`Invalid webhook signature from ${provider}`);
       throw new BadRequestException('Invalid webhook signature');
     }
 
-    // 2. Extract provider identifiers (Standardizing for this foundation)
     const providerOrderId = payload.order_id || payload.data?.object?.id;
     const providerPaymentId = payload.payment_id || payload.data?.object?.payment_intent;
-    const eventType = payload.event; // e.g. 'payment.captured'
+    const eventType = payload.event;
 
     if (!providerOrderId) {
       return { status: 'ignored', reason: 'No order ID found' };
     }
 
-    // 3. Process success events
     if (eventType === 'payment.captured' || eventType === 'checkout.session.completed') {
       const payment = await this.prisma.payment.findUnique({
         where: { providerOrderId },
@@ -179,18 +239,22 @@ export class PaymentsService {
       }
 
       return this.prisma.$transaction(async (tx) => {
-        // Atomic update with status check (Deduplication)
+        const latestPayment = await tx.payment.findUnique({ where: { id: payment.id } });
+        if (!this.canTransition(latestPayment.status, PaymentStatus.CAPTURED)) {
+          return { status: 'noop', reason: `Invalid transition from ${latestPayment.status}` };
+        }
+
         const updatedPayment = await tx.payment.update({
-          where: { id: payment.id, status: { not: PaymentStatus.CAPTURED } },
+          where: { id: payment.id },
           data: {
             status: PaymentStatus.CAPTURED,
             providerPaymentId,
           }
-        }).catch(() => null);
+        });
 
         if (!updatedPayment) return { status: 'noop', reason: 'Concurrent update' };
 
-        await tx.booking.update({
+        const updatedBooking = await tx.booking.update({
           where: {
             id: payment.bookingId,
             status: { not: BookingStatus.CANCELLED }
@@ -202,10 +266,10 @@ export class PaymentsService {
           data: {
             userId: payment.booking.userId,
             action: 'payment:webhook_captured',
-            resource: 'booking',
-            resourceId: payment.bookingId,
+            resource: 'payment',
+            resourceId: payment.id,
             status: 'success',
-            payload: { provider, eventType }
+            payload: { provider, eventType, previousStatus: payment.status }
           }
         });
 
@@ -217,16 +281,18 @@ export class PaymentsService {
           amount: payment.amount,
         });
 
-        this.eventEmitter.emit(Events.BOOKING_CONFIRMED, {
-          bookingId: payment.bookingId,
-          organizationId: payment.organizationId,
-          userId: payment.booking.userId,
-          facilityName: 'facility',
-          startTime: payment.booking.startTime,
-        });
+        if (updatedBooking) {
+          this.eventEmitter.emit(Events.BOOKING_CONFIRMED, {
+            bookingId: payment.bookingId,
+            organizationId: payment.organizationId,
+            userId: payment.booking.userId,
+            facilityName: 'facility',
+            startTime: payment.booking.startTime,
+          });
+        }
 
         return { status: 'success' };
-      });
+      }, { isolationLevel: 'Serializable' });
     }
 
     return { received: true };

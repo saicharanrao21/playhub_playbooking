@@ -40,6 +40,8 @@ describe('PaymentsService', () => {
     service = module.get<PaymentsService>(PaymentsService);
     prisma = module.get<PrismaService>(PrismaService);
     provider = module.get<IPaymentProvider>(PAYMENT_PROVIDER);
+
+    jest.clearAllMocks();
   });
 
   it('should throw BadRequestException for cancelled bookings', async () => {
@@ -94,7 +96,7 @@ describe('PaymentsService', () => {
 
     expect(result).toEqual({ status: 'success' });
     expect(mockPrisma.payment.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ status: { not: PaymentStatus.CAPTURED } })
+      where: { id: 'p1' }
     }));
   });
 
@@ -109,5 +111,29 @@ describe('PaymentsService', () => {
     const result = await service.handleWebhook('RAZORPAY', payload, 'valid_sig');
 
     expect(result.status).toBe('noop');
+  });
+
+  it('should throw BadRequestException for invalid state transitions in verifyPayment', async () => {
+    mockPrisma.payment.findUnique.mockResolvedValue({
+      id: 'p1',
+      organizationId: 'org1',
+      status: PaymentStatus.FAILED,
+    });
+
+    await expect(service.verifyPayment('org1', 'u1', {
+      providerOrderId: 'order_123',
+      providerPaymentId: 'pay_abc',
+      signature: 'valid_sig'
+    })).rejects.toThrow(BadRequestException);
+  });
+
+  it('should be idempotent in createOrder if idempotencyKey is provided', async () => {
+    const existingPayment = { id: 'p1', bookingId: 'b1', organizationId: 'org1' };
+    mockPrisma.booking.findFirst.mockResolvedValue({ id: 'b1', organizationId: 'org1', payments: [] });
+    mockPrisma.payment.findUnique.mockResolvedValue(existingPayment);
+
+    const result = await service.createOrder('org1', 'u1', { bookingId: 'b1' }, 'key_123');
+    expect(result).toEqual(existingPayment);
+    expect(mockProvider.createOrder).not.toHaveBeenCalled();
   });
 });
