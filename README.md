@@ -1,109 +1,105 @@
-# PlayHub Project: Frontend MVP
+# PlayHub: Sports & Activity Booking Platform
 
-## 1. Introduction
+PlayHub is a production-grade, multi-tenant platform for managing and booking sports venues and facilities. Built with a Flutter frontend and NestJS backend, it offers a secure, scalable, and concurrency-safe environment for venue operators and customers.
 
-This document details the implementation of PlayHub, a Sports & Activity Booking Platform, developed as a frontend-only Minimum Viable Product (MVP) using Flutter. The application adheres to a clean architecture, providing a responsive user interface across multiple platforms (Android, iOS, Web, Tablet, Desktop) without any direct backend or database integrations. All backend interactions are represented by abstract interfaces and dummy local data.
+## 🚀 Overview
 
-## 2. Implemented Features
+- **Multi-Tenant Architecture**: Complete isolation between organizations.
+- **Booking Engine**: Concurrency-safe slot reservation with support for rescheduling and cancellation.
+- **Availability Engine**: Real-time slot generation based on operating hours, closures, and blocks.
+- **Payment Integration**: Secure payment foundation supporting Razorpay and Stripe.
+- **Security First**: JWT-based auth, refresh token rotation, RBAC, and rate limiting.
+- **Developer Friendly**: Full Swagger documentation and automated tests.
 
-This MVP includes the following key features:
+---
 
-*   **Complete Flutter Project Structure**: Organized using a feature-first approach within a Clean Architecture paradigm.
-*   **Core Models**: Dart classes for `User`, `Business`, `Venue`, `Activity`, `Category`, `Slot`, `Booking`, `Review`, `City`, and `Notification`.
-*   **Abstract Repositories & Dummy Data**: Interfaces for data access and concrete implementations using in-memory dummy data, ensuring backend independence.
-*   **State Management**: Integrated with Riverpod for efficient and scalable state management.
-*   **Routing**: Configured with GoRouter for declarative navigation.
-*   **Theming**: Implemented with Material 3, supporting both Light and Dark modes using `flex_color_scheme` and `google_fonts`.
-*   **Responsive Layouts**: Utilizes `responsive_framework` to adapt the UI across various screen sizes.
-*   **Customer Application Screens**:
-    *   **Login Screen**: Basic UI for user authentication.
-    *   **Home Screen**: Displays categories, popular venues, and a search bar.
-    *   **Venue Details Screen**: Shows detailed information about a venue, including images, description, amenities, and a booking call-to-action.
-    *   **Profile Screen**: User profile view with options for bookings, favorites, and navigation to dashboards.
-*   **Business Owner Dashboard UI**: A basic dashboard providing an overview of bookings, revenue, and venue management options.
-*   **Admin Dashboard UI**: A responsive web dashboard for platform overview, pending approvals, and management functionalities.
+## 📂 Project Structure
 
-## 3. Technical Stack
+- `backend/`: NestJS, Prisma, PostgreSQL.
+- `lib/`: Flutter (Riverpod state management, GoRouter navigation).
+- `docs/`: Detailed technical documentation.
 
-*   **Framework**: Flutter (Latest Stable)
-*   **Architecture**: Clean Architecture, Feature-First Structure, SOLID Principles, Repository Pattern, Dependency Injection Ready.
-*   **State Management**: Riverpod
-*   **Routing**: GoRouter
-*   **UI/Styling**: Material 3, FlexColorScheme, Google Fonts, Responsive Framework
-*   **Local Storage (Abstraction)**: SharedPreferences (abstraction only)
+---
 
-## 4. Project Structure
+## 🛠️ Getting Started
 
-The project adheres to the following directory structure:
+### Prerequisites
 
-```
-playhub/
-├── lib/
-│   ├── core/               # Core functionalities, common utilities, base classes
-│   │   ├── constants/      # App-wide constants
-│   │   ├── models/         # Global data models
-│   │   ├── providers/      # Riverpod providers for repositories
-│   │   ├── repositories/   # Abstract repository interfaces and dummy implementations
-│   │   └── theme/          # Application theme definitions
-│   ├── features/           # Feature-specific modules
-│   │   ├── admin_dashboard/ # Admin dashboard feature
-│   │   ├── auth/           # Authentication feature
-│   │   ├── booking/        # Booking feature
-│   │   ├── business_dashboard/ # Business owner dashboard feature
-│   │   ├── home/           # Home screen feature
-│   │   ├── profile/        # User profile feature
-│   │   ├── search/         # Search feature
-│   │   └── venues/         # Venue management/details feature
-│   ├── routes/             # GoRouter configuration
-│   ├── shared/             # Reusable widgets, components
-│   ├── main.dart           # Application entry point
-│   └── app.dart            # Root widget, theme, router setup
-├── assets/                 # Images, fonts, other assets
-├── test/                   # Unit and widget tests
-├── pubspec.yaml            # Project dependencies and metadata
-└── README.md               # Project documentation
-```
+- **Node.js**: v18 or higher
+- **npm**: v9 or higher
+- **Flutter**: Latest stable
+- **PostgreSQL**: Local or Docker instance
+- **Prisma CLI**: `npm install -g prisma`
 
-## 5. How to Run the Application
+### 1. Backend Setup
 
-To run the PlayHub application, follow these steps:
+1. **Navigate to backend**:
+   ```bash
+   cd backend
+   ```
 
-1.  **Ensure Flutter is Installed**: Make sure you have Flutter installed on your system. If not, follow the official Flutter installation guide: [https://flutter.dev/docs/get-started/install](https://flutter.dev/docs/get-started/install)
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-2.  **Navigate to Project Directory**:
-    ```bash
-    cd playhub
-    ```
+3. **Configure Environment**:
+   Copy `.env.example` to `.env` and fill in your database and provider credentials.
 
-3.  **Get Dependencies**:
-    ```bash
-    flutter pub get
-    ```
+4. **Initialize Database**:
+   ```bash
+   npx prisma generate
+   npx prisma migrate dev
+   ```
 
-4.  **Run the Application**:
-    *   **For Web**: 
-        ```bash
-        flutter run -d chrome
-        ```
-    *   **For Desktop (Linux/Windows/macOS)**: Ensure desktop support is enabled (`flutter config --enable-linux-desktop`, etc.) then:
-        ```bash
-        flutter run -d linux # or windows, macos
-        ```
-    *   **For Android/iOS**: Connect a device or start an emulator/simulator, then:
-        ```bash
-        flutter run
-        ```
+5. **Run the server**:
+   ```bash
+   npm run start:dev
+   ```
+   - API: `http://localhost:3000/api/v1`
+   - Swagger Docs: `http://localhost:3000/docs`
 
-    The application will start on the login screen (`/login`). You can navigate to other screens using the GoRouter setup.
+### 2. Flutter Setup
 
-## 6. Future Enhancements
+1. **Install dependencies**:
+   ```bash
+   flutter pub get
+   ```
 
-The architecture is designed to support future additions such as:
+2. **Run the app**:
+   ```bash
+   flutter run
+   ```
 
-*   Payments, Wallet, Membership Plans, Coupons, Referral Program
-*   Tournaments, Team Creation, Chat
-*   WhatsApp Notifications, Push Notifications, Live Availability
-*   AI Recommendations, Multi-language Support, Multi-country Expansion
-*   Integration with a real backend service (e.g., Firebase, Supabase, custom API) by implementing the abstract repository interfaces.
+---
 
-This MVP provides a solid foundation for a production-grade application, ready for backend integration and further feature development.
+## 🧪 Testing & Validation
+
+### Backend
+- **Run Unit Tests**: `npm test`
+- **Build Check**: `npm run build`
+- **Prisma Validation**: `npx prisma validate`
+
+### Flutter
+- **Analyze**: `flutter analyze`
+- **Test**: `flutter test`
+
+---
+
+## 📘 Documentation
+
+For detailed guides, refer to the `docs/` directory:
+- [Architecture Overview](./docs/architecture/backend.md)
+- [Multi-Tenancy](./docs/architecture/multi-tenancy.md)
+- [Booking Engine](./docs/architecture/booking-engine.md)
+- [Payment System Setup](./docs/architecture/payment-system.md)
+- [Security Hardening](./docs/architecture/security.md)
+
+---
+
+## 🛡️ Production Readiness
+
+- **Health Checks**: `/health` (liveness) and `/health/readiness` (database check).
+- **Rate Limiting**: Enabled globally.
+- **Sanitized Logging**: Sensitive data (passwords, tokens, CVV) are automatically redacted.
+- **Atomic Transactions**: All booking and payment state changes use `Serializable` transactions.

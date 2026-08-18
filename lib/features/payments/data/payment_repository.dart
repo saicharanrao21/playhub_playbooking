@@ -14,7 +14,7 @@ class PaymentRepository {
       '$_baseUrl/order',
       data: {
         'bookingId': bookingId,
-        if (provider != null) 'provider': provider.name.toUpperCase(),
+        'provider': provider?.name.toUpperCase(),
       },
     );
 
@@ -36,7 +36,7 @@ class PaymentRepository {
         'providerOrderId': providerOrderId,
         'providerPaymentId': providerPaymentId,
         'signature': signature,
-        if (metadata != null) 'metadata': metadata,
+        'metadata': metadata,
       },
     );
 
