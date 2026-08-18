@@ -8,6 +8,7 @@ import { OrganizationGuard } from '../common/guards/organization.guard';
 import { OrganizationContext } from '../common/decorators/organization-context.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserIdentity } from '../common/interfaces/user-identity.interface';
+import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('payments')
 @Controller('organizations/:organizationId/payments')
@@ -57,10 +58,10 @@ export class PaymentsController {
     return this.paymentsService.initiateRefund(organizationId, id, reason);
   }
 
+  @Public()
   @Post('webhook/:provider')
-  @ApiOperation({ summary: 'Handle payment provider webhooks (Public endpoint but internally verified)' })
-  // Webhooks are usually not under JwtAuthGuard, so we might need a separate controller or disable guard for this route
-  // For this foundation, we'll keep it here but note that guards would need bypass for real provider calls
+  @ApiOperation({ summary: 'Handle payment provider webhooks' })
+  @HttpCode(HttpStatus.OK)
   async handleWebhook(
     @Req() req: any,
     @Body() payload: any,

@@ -48,25 +48,46 @@ export class AuditInterceptor implements NestInterceptor {
       const resource = pathParts[0] || 'unknown';
       const action = method.toLowerCase();
 
-      // Sanitized payload (remove sensitive fields)
+      // Sanitized request payload
       const payload = { ...body };
-      delete payload.password;
-      delete payload.token;
-      delete payload.refreshToken;
+      this._sanitize(payload);
+
+      // Sanitized response data
+      let sanitizedResponse = null;
+      if (responseData && typeof responseData === 'object') {
+        sanitizedResponse = Array.isArray(responseData)
+          ? responseData.map(item => this._sanitize({ ...item }))
+          : this._sanitize({ ...responseData });
+      }
 
       await this.prisma.auditLog.create({
         data: {
           userId: user?.userId,
           action: `${action}:${resource}`,
           resource: resource,
-          resourceId: request.params.id || body.id,
+          resourceId: request.params.id || body.id || (responseData as any)?.id,
           ipAddress: ip,
           status: status,
-          payload: payload,
+          payload: {
+            request: payload,
+            response: sanitizedResponse,
+          },
         },
       });
     } catch (e) {
       this.logger.error('Failed to create audit log', e.stack);
     }
+  }
+
+  private _sanitize(obj: any) {
+    if (!obj || typeof obj !== 'object') return obj;
+    const sensitiveFields = [
+      'password', 'passwordHash', 'token', 'refreshToken', 'accessToken',
+      'secret', 'key', 'signature', 'cvv', 'cardNumber'
+    ];
+    sensitiveFields.forEach(field => {
+      if (field in obj) obj[field] = '[REDACTED]';
+    });
+    return obj;
   }
 }

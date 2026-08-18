@@ -128,21 +128,30 @@ export class BookingsService {
     });
   }
 
-  async findOne(organizationId: string, id: string) {
+  async findOne(organizationId: string, id: string, userId?: string) {
     const booking = await this.prisma.booking.findFirst({
-      where: { id, organizationId },
+      where: {
+        id,
+        organizationId,
+        ...(userId ? { userId } : {}),
+      },
       include: {
         facility: {
           include: { venue: true }
         },
         user: {
-          select: { id: true, email: true, fullName: true }
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            phoneNumber: true,
+          }
         }
       }
     });
 
     if (!booking) {
-      throw new NotFoundException('Booking not found');
+      throw new NotFoundException('Booking not found or access denied');
     }
 
     return booking;

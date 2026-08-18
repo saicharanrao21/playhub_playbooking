@@ -19,10 +19,25 @@ async function bootstrap() {
 
   // Security
   app.use(helmet());
+
+  const allowedOrigins = configService.get<string>('CORS_ORIGINS')?.split(',') || [];
   app.enableCors({
-    origin: configService.get<string>('CORS_ORIGINS')?.split(',') || '*',
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || configService.get('NODE_ENV') !== 'production') {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    allowedHeaders: 'Content-Type, Accept, Authorization, x-organization-id, x-idempotency-key, x-razorpay-signature, stripe-signature',
   });
+
+  // Body parser limits
+  const { json, urlencoded } = require('express');
+  app.use(json({ limit: '1mb' }));
+  app.use(urlencoded({ extended: true, limit: '1mb' }));
 
   // Global Prefix
   app.setGlobalPrefix(apiPrefix);

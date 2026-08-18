@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { Prisma } from '@prisma/client';
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
@@ -18,15 +19,24 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
     const requestId = request['requestId'];
 
-    const status =
+    let status =
       exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
+    let message =
       exception instanceof HttpException
         ? exception.getResponse()
         : 'Internal server error';
+
+    // Handle Prisma Errors
+    if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      status = HttpStatus.BAD_REQUEST;
+      message = this._handlePrismaError(exception);
+    } else if (exception instanceof Prisma.PrismaClientValidationError) {
+      status = HttpStatus.UNPROCESSABLE_ENTITY;
+      message = 'Validation failed in the database layer.';
+    }
 
     // Standardized error structure
     const errorResponse = {
@@ -51,7 +61,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
       );
     }
 
-    // In production, suppress detailed messages for 500 errors
+    // In production, suppress detailed messages for 500 errors and Prisma internals
     if (process.env.NODE_ENV === 'production' && status === HttpStatus.INTERNAL_SERVER_ERROR) {
       errorResponse.error.message = 'An internal server error occurred.';
     }
@@ -61,6 +71,10 @@ export class ApiExceptionFilter implements ExceptionFilter {
 
   private _getErrorCode(status: number, exception: any): string {
     if (exception.response?.code) return exception.response.code;
+    if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      if (exception.code === 'P2002') return 'UNIQUE_CONSTRAINT_FAILED';
+      if (exception.code === 'P2025') return 'RESOURCE_NOT_FOUND';
+    }
 
     switch (status) {
       case 401: return 'AUTH_REQUIRED';
@@ -70,6 +84,18 @@ export class ApiExceptionFilter implements ExceptionFilter {
       case 422: return 'VALIDATION_ERROR';
       case 429: return 'RATE_LIMITED';
       default: return 'INTERNAL_ERROR';
+    }
+  }
+
+  private _handlePrismaError(error: Prisma.PrismaClientKnownRequestError): string {
+    switch (error.code) {
+      case 'P2002':
+        const target = (error.meta?.target as string[])?.join(', ');
+        return `Unique constraint failed on the fields: ${target}`;
+      case 'P2025':
+        return 'An operation failed because it depends on one or more records that were not found.';
+      default:
+        return 'A database error occurred.';
     }
   }
 }
