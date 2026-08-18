@@ -112,15 +112,30 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
             const SizedBox(height: 8),
             Text('End: ${booking.endTime.toLocal().toString().split('.')[0]}'),
             const SizedBox(height: 32),
-            if (booking.status != BookingStatus.cancelled)
+            if (booking.status != BookingStatus.cancelled) ...[
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => context.push(
+                    '/booking/${booking.id}/reschedule',
+                    extra: {'facilityId': booking.facilityId},
+                  ),
+                  child: const Text('Reschedule Booking'),
+                ),
+              ),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _cancelBooking,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
                   child: const Text('Cancel Booking'),
                 ),
               ),
+            ],
           ],
         ),
       ),

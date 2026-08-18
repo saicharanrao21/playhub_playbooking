@@ -51,4 +51,18 @@ export class BookingEventsListener {
       payload: { ...payload },
     });
   }
+
+  @OnEvent(Events.BOOKING_RESCHEDULED)
+  async handleBookingRescheduled(payload: any) {
+    this.logger.log(`Handling booking rescheduled event: ${payload.bookingId}`);
+    await this.notificationsService.create({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      bookingId: payload.bookingId,
+      type: NotificationType.BOOKING_CONFIRMED,
+      title: 'Booking Rescheduled',
+      message: `Your booking for ${payload.facilityName} has been successfully rescheduled to ${payload.startTime}.`,
+      payload: { ...payload },
+    });
+  }
 }

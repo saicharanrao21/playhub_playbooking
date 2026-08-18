@@ -12,6 +12,7 @@ import '../../features/notifications/presentation/screens/notification_list_scre
 import '../../features/bookings/presentation/screens/booking_list_screen.dart';
 import '../../features/bookings/presentation/screens/booking_details_screen.dart';
 import '../../features/bookings/presentation/screens/booking_review_screen.dart';
+import '../../features/bookings/presentation/screens/reschedule_screen.dart';
 import '../../features/availability/presentation/screens/availability_screen.dart';
 
 // Placeholder for screens not yet implemented in detail
@@ -90,6 +91,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'booking_details',
         builder: (context, state) =>
             BookingDetailsScreen(bookingId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/booking/:id/reschedule',
+        name: 'booking_reschedule',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return RescheduleScreen(
+            bookingId: state.pathParameters['id']!,
+            facilityId: extra['facilityId'],
+          );
+        },
       ),
       GoRoute(
         path: '/availability/:facilityId',

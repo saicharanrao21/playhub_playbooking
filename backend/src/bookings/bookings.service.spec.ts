@@ -135,4 +135,54 @@ describe('BookingsService (Concurrency & Logic)', () => {
     expect(result.status).toBe(BookingStatus.CANCELLED);
     expect(mockEventEmitter.emit).toHaveBeenCalledWith(Events.BOOKING_CANCELLED, expect.any(Object));
   });
+
+  it('should reschedule a booking to a valid available slot', async () => {
+    const mockBooking = {
+      id: 'b1',
+      userId: 'u1',
+      status: BookingStatus.CONFIRMED,
+      facilityId: 'f1',
+      facility: { venue: { timezone: 'UTC' }, name: 'F1' },
+      startTime: new Date('2026-08-20T10:00:00Z'),
+      endTime: new Date('2026-08-20T11:00:00Z'),
+    };
+
+    mockPrisma.booking.findFirst
+      .mockResolvedValueOnce(mockBooking) // findOne
+      .mockResolvedValueOnce(null); // overlap check
+
+    mockAvailability.getAvailability.mockResolvedValue({
+      availableIntervals: [{ contains: () => true }]
+    });
+    mockPrisma.booking.update.mockResolvedValue({ ...mockBooking, startTime: new Date('2026-08-21T10:00:00Z') });
+
+    const dto = { newStartTime: '2026-08-21T10:00:00Z', newEndTime: '2026-08-21T11:00:00Z' };
+    const result = await service.reschedule('org1', 'u1', 'b1', dto);
+
+    expect(result.id).toBe('b1');
+    expect(mockEventEmitter.emit).toHaveBeenCalledWith(Events.BOOKING_RESCHEDULED, expect.any(Object));
+  });
+
+  it('should throw ConflictException if new slot is unavailable', async () => {
+    const mockBooking = {
+      id: 'b1',
+      userId: 'u1',
+      status: BookingStatus.CONFIRMED,
+      facilityId: 'f1',
+      facility: { venue: { timezone: 'UTC' } },
+      startTime: new Date('2026-08-20T10:00:00Z'),
+      endTime: new Date('2026-08-20T11:00:00Z'),
+    };
+
+    mockPrisma.booking.findFirst
+      .mockResolvedValueOnce(mockBooking)
+      .mockResolvedValueOnce(null);
+
+    mockAvailability.getAvailability.mockResolvedValue({
+      availableIntervals: [{ contains: () => false }] // Not available
+    });
+
+    const dto = { newStartTime: '2026-08-21T10:00:00Z', newEndTime: '2026-08-21T11:00:00Z' };
+    await expect(service.reschedule('org1', 'u1', 'b1', dto)).rejects.toThrow(ConflictException);
+  });
 });

@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, UseGuards, Param, Query, Patch, Req } from
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader, ApiQuery } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { RescheduleBookingDto } from './dto/reschedule-booking.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
 import { OrganizationContext } from '../common/decorators/organization-context.decorator';
@@ -69,5 +70,16 @@ export class BookingsController {
     @Param('id') id: string,
   ) {
     return this.bookingsService.cancel(organizationId, id);
+  }
+
+  @Patch(':id/reschedule')
+  @ApiOperation({ summary: 'Reschedule a booking' })
+  async reschedule(
+    @OrganizationContext() organizationId: string,
+    @CurrentUser() user: UserIdentity,
+    @Param('id') id: string,
+    @Body() dto: RescheduleBookingDto,
+  ) {
+    return this.bookingsService.reschedule(organizationId, user.userId, id, dto);
   }
 }

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, ConflictException, B
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { RescheduleBookingDto } from './dto/reschedule-booking.dto';
 import { AvailabilityService } from '../availability/availability.service';
 import { BookingStatus } from '@prisma/client';
 import { DateTime } from 'luxon';
@@ -185,5 +186,89 @@ export class BookingsService {
     });
 
     return updatedBooking;
+  }
+
+  async reschedule(organizationId: string, userId: string, bookingId: string, dto: RescheduleBookingDto) {
+    const newStart = DateTime.fromISO(dto.newStartTime);
+    const newEnd = DateTime.fromISO(dto.newEndTime);
+
+    if (!newStart.isValid || !newEnd.isValid) {
+      throw new BadRequestException('Invalid date format');
+    }
+
+    if (newStart >= newEnd) {
+      throw new BadRequestException('Start time must be before end time');
+    }
+
+    const booking = await this.findOne(organizationId, bookingId);
+
+    if (booking.userId !== userId) {
+      throw new ForbiddenException('Not authorized to reschedule this booking');
+    }
+
+    if (booking.status !== BookingStatus.CONFIRMED && booking.status !== BookingStatus.PENDING) {
+      throw new BadRequestException('Only active bookings can be rescheduled');
+    }
+
+    // Optimization: return immediately if new slot is same as current
+    if (DateTime.fromJSDate(booking.startTime).equals(newStart) &&
+        DateTime.fromJSDate(booking.endTime).equals(newEnd)) {
+      return booking;
+    }
+
+    const requestedInterval = new TimeInterval(newStart, newEnd);
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Check for overlaps excluding the current booking
+      const existingOverlaps = await tx.booking.findFirst({
+        where: {
+          facilityId: booking.facilityId,
+          id: { not: booking.id },
+          status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+          AND: [
+            { startTime: { lt: newEnd.toJSDate() } },
+            { endTime: { gt: newStart.toJSDate() } },
+          ],
+        },
+      });
+
+      if (existingOverlaps) {
+        throw new ConflictException('The requested new slot is already booked');
+      }
+
+      // 2. Check Availability passing tx
+      const dateStr = newStart.setZone(booking.facility.venue.timezone).toISODate();
+      const availability = await this.availabilityService.getAvailability(organizationId, booking.facilityId, dateStr!, 60, tx);
+
+      const isAvailable = availability.availableIntervals.some(interval =>
+        interval.contains(requestedInterval)
+      );
+
+      if (!isAvailable) {
+        throw new ConflictException('Requested time is outside operational hours or blocked');
+      }
+
+      // 3. Update Booking
+      const updatedBooking = await tx.booking.update({
+        where: { id: bookingId },
+        data: {
+          startTime: newStart.toJSDate(),
+          endTime: newEnd.toJSDate(),
+        },
+        include: { facility: true }
+      });
+
+      this.eventEmitter.emit(Events.BOOKING_RESCHEDULED, {
+        bookingId: updatedBooking.id,
+        organizationId: updatedBooking.organizationId,
+        userId: updatedBooking.userId,
+        facilityName: updatedBooking.facility.name,
+        startTime: updatedBooking.startTime,
+      });
+
+      return updatedBooking;
+    }, {
+      isolationLevel: 'Serializable',
+    });
   }
 }
