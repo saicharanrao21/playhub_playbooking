@@ -44,8 +44,11 @@ class BookingRepository {
     return null;
   }
 
-  Future<void> cancelBooking(String id) async {
-    await _apiClient.patch('$_baseUrl/$id/cancel');
+  Future<void> cancelBooking(String id, {String? reason}) async {
+    await _apiClient.patch(
+      '$_baseUrl/$id/cancel',
+      data: {'reason': reason},
+    );
   }
 
   Future<Booking?> rescheduleBooking({

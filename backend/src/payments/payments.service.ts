@@ -99,11 +99,14 @@ export class PaymentsService {
         }
       });
 
-      // 2. Update Booking record
+      // 2. Update Booking record only if not cancelled
       const updatedBooking = await tx.booking.update({
-        where: { id: payment.bookingId },
+        where: {
+          id: payment.bookingId,
+          status: { not: BookingStatus.CANCELLED }
+        },
         data: {
-          status: BookingStatus.CONFIRMED, // Final confirmation
+          status: BookingStatus.CONFIRMED,
         }
       });
 
@@ -188,9 +191,12 @@ export class PaymentsService {
         if (!updatedPayment) return { status: 'noop', reason: 'Concurrent update' };
 
         await tx.booking.update({
-          where: { id: payment.bookingId },
+          where: {
+            id: payment.bookingId,
+            status: { not: BookingStatus.CANCELLED }
+          },
           data: { status: BookingStatus.CONFIRMED }
-        });
+        }).catch(() => null);
 
         await tx.auditLog.create({
           data: {

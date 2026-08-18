@@ -162,30 +162,47 @@ export class BookingsService {
     });
   }
 
-  async cancel(organizationId: string, id: string) {
+  async cancel(organizationId: string, id: string, reason?: string) {
     const booking = await this.findOne(organizationId, id);
 
     if (booking.status === BookingStatus.CANCELLED) {
        return booking;
     }
 
-    const updatedBooking = await this.prisma.booking.update({
-      where: { id },
-      data: {
-        status: BookingStatus.CANCELLED,
-      },
-      include: { facility: true }
-    });
+    if (booking.status === BookingStatus.COMPLETED) {
+      throw new BadRequestException('Cannot cancel a completed booking');
+    }
 
-    this.eventEmitter.emit(Events.BOOKING_CANCELLED, {
-      bookingId: updatedBooking.id,
-      organizationId: updatedBooking.organizationId,
-      userId: updatedBooking.userId,
-      facilityName: updatedBooking.facility.name,
-      startTime: updatedBooking.startTime,
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const updatedBooking = await tx.booking.update({
+        where: { id },
+        data: {
+          status: BookingStatus.CANCELLED,
+          cancelledAt: new Date(),
+          cancelReason: reason,
+        },
+        include: { facility: true }
+      });
 
-    return updatedBooking;
+      // Update associated non-captured payments to CANCELLED
+      await tx.payment.updateMany({
+        where: {
+          bookingId: id,
+          status: { not: 'CAPTURED' }
+        },
+        data: { status: 'CANCELLED' }
+      });
+
+      this.eventEmitter.emit(Events.BOOKING_CANCELLED, {
+        bookingId: updatedBooking.id,
+        organizationId: updatedBooking.organizationId,
+        userId: updatedBooking.userId,
+        facilityName: updatedBooking.facility.name,
+        startTime: updatedBooking.startTime,
+      });
+
+      return updatedBooking;
+    });
   }
 
   async reschedule(organizationId: string, userId: string, bookingId: string, dto: RescheduleBookingDto) {

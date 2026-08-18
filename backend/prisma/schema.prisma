@@ -266,6 +266,8 @@ model Booking {
   totalPrice     Decimal?      @db.Decimal(12, 2)
   currency       String?       @default("INR")
   idempotencyKey String?       @unique
+  cancelledAt    DateTime?
+  cancelReason   String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 

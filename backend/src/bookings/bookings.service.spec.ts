@@ -3,7 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BookingsService } from './bookings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AvailabilityService } from '../availability/availability.service';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { BookingStatus } from '@prisma/client';
 import { Events } from '../common/constants/events';
 
@@ -14,6 +14,7 @@ describe('BookingsService (Concurrency & Logic)', () => {
   const mockPrisma = {
     facility: { findFirst: jest.fn() },
     booking: { findFirst: jest.fn(), create: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn() },
+    payment: { updateMany: jest.fn() },
     $transaction: jest.fn((cb) => cb(mockPrisma)),
   };
 
@@ -131,9 +132,17 @@ describe('BookingsService (Concurrency & Logic)', () => {
     mockPrisma.booking.findFirst.mockResolvedValue(mockBooking);
     mockPrisma.booking.update.mockResolvedValue({ ...mockBooking, status: BookingStatus.CANCELLED });
 
-    const result = await service.cancel('org1', 'b1');
+    const result = await service.cancel('org1', 'b1', 'Change of plans');
     expect(result.status).toBe(BookingStatus.CANCELLED);
+    expect(mockPrisma.booking.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ cancelReason: 'Change of plans' })
+    }));
     expect(mockEventEmitter.emit).toHaveBeenCalledWith(Events.BOOKING_CANCELLED, expect.any(Object));
+  });
+
+  it('should throw BadRequestException when cancelling a completed booking', async () => {
+    mockPrisma.booking.findFirst.mockResolvedValue({ id: 'b1', status: BookingStatus.COMPLETED, organizationId: 'org1' });
+    await expect(service.cancel('org1', 'b1')).rejects.toThrow(BadRequestException);
   });
 
   it('should reschedule a booking to a valid available slot', async () => {

@@ -12,8 +12,8 @@ describe('PaymentsService', () => {
   let provider: IPaymentProvider;
 
   const mockPrisma = {
-    booking: { findFirst: jest.fn(), update: jest.fn() },
-    payment: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    booking: { findFirst: jest.fn(), update: jest.fn().mockReturnValue(Promise.resolve({})) },
+    payment: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn().mockReturnValue(Promise.resolve({})) },
     auditLog: { create: jest.fn() },
     $transaction: jest.fn((cb) => cb(mockPrisma)),
   };

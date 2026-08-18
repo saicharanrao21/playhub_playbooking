@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/booking_provider.dart';
-import '../../availability/presentation/providers/availability_provider.dart';
+import '../../../availability/presentation/providers/availability_provider.dart';
 
 class RescheduleScreen extends ConsumerStatefulWidget {
   final String bookingId;

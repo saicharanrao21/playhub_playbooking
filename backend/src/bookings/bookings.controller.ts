@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader, ApiQuery } from '@nest
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { RescheduleBookingDto } from './dto/reschedule-booking.dto';
+import { CancelBookingDto } from './dto/cancel-booking.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
 import { OrganizationContext } from '../common/decorators/organization-context.decorator';
@@ -68,8 +69,9 @@ export class BookingsController {
   async cancel(
     @OrganizationContext() organizationId: string,
     @Param('id') id: string,
+    @Body() dto: CancelBookingDto,
   ) {
-    return this.bookingsService.cancel(organizationId, id);
+    return this.bookingsService.cancel(organizationId, id, dto.reason);
   }
 
   @Patch(':id/reschedule')
