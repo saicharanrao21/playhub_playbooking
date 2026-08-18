@@ -31,10 +31,21 @@ export class BookingsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List bookings' })
-  @ApiQuery({ name: 'userId', required: false })
+  @ApiOperation({ summary: 'List bookings for the authenticated user' })
   @ApiQuery({ name: 'facilityId', required: false })
   async findAll(
+    @OrganizationContext() organizationId: string,
+    @CurrentUser() user: UserIdentity,
+    @Query('facilityId') facilityId?: string,
+  ) {
+    return this.bookingsService.findAll(organizationId, { userId: user.userId, facilityId });
+  }
+
+  @Get('all')
+  @ApiOperation({ summary: 'List all bookings in the organization (Admin/Operator only)' })
+  @ApiQuery({ name: 'userId', required: false })
+  @ApiQuery({ name: 'facilityId', required: false })
+  async findAllAdmin(
     @OrganizationContext() organizationId: string,
     @Query('userId') userId?: string,
     @Query('facilityId') facilityId?: string,

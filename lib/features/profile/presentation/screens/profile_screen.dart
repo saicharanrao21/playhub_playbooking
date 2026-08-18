@@ -45,7 +45,12 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 32),
-          _buildMenuItem(context, Icons.calendar_today, 'My Bookings', () {}),
+          _buildMenuItem(
+            context,
+            Icons.calendar_today,
+            'My Bookings',
+            () => context.push('/bookings'),
+          ),
           _buildMenuItem(context, Icons.favorite_border, 'Favorites', () {}),
           _buildMenuItem(context, Icons.payment, 'Payments', () {}),
           _buildMenuItem(

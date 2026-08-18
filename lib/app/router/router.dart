@@ -9,6 +9,10 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/business_dashboard/presentation/screens/business_dashboard_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/notifications/presentation/screens/notification_list_screen.dart';
+import '../../features/bookings/presentation/screens/booking_list_screen.dart';
+import '../../features/bookings/presentation/screens/booking_details_screen.dart';
+import '../../features/bookings/presentation/screens/booking_review_screen.dart';
+import '../../features/availability/presentation/screens/availability_screen.dart';
 
 // Placeholder for screens not yet implemented in detail
 class PlaceholderScreen extends StatelessWidget {
@@ -75,6 +79,35 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/profile',
         name: 'profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/bookings',
+        name: 'bookings',
+        builder: (context, state) => const BookingListScreen(),
+      ),
+      GoRoute(
+        path: '/booking/:id',
+        name: 'booking_details',
+        builder: (context, state) =>
+            BookingDetailsScreen(bookingId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/availability/:facilityId',
+        name: 'availability',
+        builder: (context, state) =>
+            AvailabilityScreen(facilityId: state.pathParameters['facilityId']!),
+      ),
+      GoRoute(
+        path: '/booking/review',
+        name: 'booking_review',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return BookingReviewScreen(
+            facilityId: extra['facilityId'],
+            startTime: DateTime.parse(extra['startTime']),
+            endTime: DateTime.parse(extra['endTime']),
+          );
+        },
       ),
       GoRoute(
         path: '/notifications',

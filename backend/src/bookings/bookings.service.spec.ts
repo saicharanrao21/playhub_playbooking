@@ -3,8 +3,9 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BookingsService } from './bookings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AvailabilityService } from '../availability/availability.service';
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { BookingStatus } from '@prisma/client';
+import { Events } from '../common/constants/events';
 
 describe('BookingsService (Concurrency & Logic)', () => {
   let service: BookingsService;
@@ -12,7 +13,7 @@ describe('BookingsService (Concurrency & Logic)', () => {
 
   const mockPrisma = {
     facility: { findFirst: jest.fn() },
-    booking: { findFirst: jest.fn(), create: jest.fn(), findUnique: jest.fn() },
+    booking: { findFirst: jest.fn(), create: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn() },
     $transaction: jest.fn((cb) => cb(mockPrisma)),
   };
 
@@ -103,5 +104,35 @@ describe('BookingsService (Concurrency & Logic)', () => {
 
     expect(fulfilled.length).toBe(1);
     expect(rejected.length).toBe(9);
+  });
+
+  it('should list bookings for an organization', async () => {
+    mockPrisma.booking.findMany.mockResolvedValue([{ id: 'b1' }]);
+    const result = await service.findAll('org1', { userId: 'u1' });
+    expect(result).toHaveLength(1);
+    expect(mockPrisma.booking.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ organizationId: 'org1', userId: 'u1' })
+    }));
+  });
+
+  it('should find one booking and enforce organization isolation', async () => {
+    mockPrisma.booking.findFirst.mockResolvedValue({ id: 'b1', organizationId: 'org1' });
+    const result = await service.findOne('org1', 'b1');
+    expect(result.id).toBe('b1');
+  });
+
+  it('should throw NotFoundException if booking not in organization', async () => {
+    mockPrisma.booking.findFirst.mockResolvedValue(null);
+    await expect(service.findOne('org1', 'b2')).rejects.toThrow(NotFoundException);
+  });
+
+  it('should cancel an eligible booking', async () => {
+    const mockBooking = { id: 'b1', status: BookingStatus.CONFIRMED, organizationId: 'org1', userId: 'u1', facility: { name: 'F1' }, startTime: new Date() };
+    mockPrisma.booking.findFirst.mockResolvedValue(mockBooking);
+    mockPrisma.booking.update.mockResolvedValue({ ...mockBooking, status: BookingStatus.CANCELLED });
+
+    const result = await service.cancel('org1', 'b1');
+    expect(result.status).toBe(BookingStatus.CANCELLED);
+    expect(mockEventEmitter.emit).toHaveBeenCalledWith(Events.BOOKING_CANCELLED, expect.any(Object));
   });
 });
