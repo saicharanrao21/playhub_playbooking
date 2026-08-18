@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BookingsService } from './bookings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AvailabilityService } from '../availability/availability.service';
@@ -11,12 +12,16 @@ describe('BookingsService (Concurrency & Logic)', () => {
 
   const mockPrisma = {
     facility: { findFirst: jest.fn() },
-    booking: { findFirst: jest.fn(), create: jest.fn() },
+    booking: { findFirst: jest.fn(), create: jest.fn(), findUnique: jest.fn() },
     $transaction: jest.fn((cb) => cb(mockPrisma)),
   };
 
   const mockAvailability = {
     getAvailability: jest.fn(),
+  };
+
+  const mockEventEmitter = {
+    emit: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -25,6 +30,7 @@ describe('BookingsService (Concurrency & Logic)', () => {
         BookingsService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: AvailabilityService, useValue: mockAvailability },
+        { provide: EventEmitter2, useValue: mockEventEmitter },
       ],
     }).compile();
 

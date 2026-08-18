@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException, ConflictException, ForbiddenException, BadRequestException, Logger, Inject } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { IPaymentProvider, PAYMENT_PROVIDER } from './interfaces/payment-provider.interface';
 import { CreatePaymentOrderDto } from './dto/create-payment-order.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
 import { PaymentStatus, BookingStatus, PaymentProvider } from '@prisma/client';
+import { Events } from '../common/constants/events';
 
 @Injectable()
 export class PaymentsService {
@@ -12,6 +14,7 @@ export class PaymentsService {
   constructor(
     private prisma: PrismaService,
     @Inject(PAYMENT_PROVIDER) private provider: IPaymentProvider,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async createOrder(organizationId: string, userId: string, dto: CreatePaymentOrderDto) {
@@ -116,6 +119,23 @@ export class PaymentsService {
         }
       });
 
+      this.eventEmitter.emit(Events.PAYMENT_CAPTURED, {
+        paymentId: updatedPayment.id,
+        bookingId: updatedBooking.id,
+        organizationId: updatedPayment.organizationId,
+        userId: userId,
+        amount: updatedPayment.amount,
+      });
+
+      // confirmed status already updated in DB, emit event for notification
+      this.eventEmitter.emit(Events.BOOKING_CONFIRMED, {
+        bookingId: updatedBooking.id,
+        organizationId: updatedBooking.organizationId,
+        userId: updatedBooking.userId,
+        facilityName: 'facility', // Simplified for foundation
+        startTime: updatedBooking.startTime,
+      });
+
       return { status: 'success', booking: updatedBooking };
     });
   }
@@ -181,6 +201,22 @@ export class PaymentsService {
             status: 'success',
             payload: { provider, eventType }
           }
+        });
+
+        this.eventEmitter.emit(Events.PAYMENT_CAPTURED, {
+          paymentId: updatedPayment.id,
+          bookingId: payment.bookingId,
+          organizationId: payment.organizationId,
+          userId: payment.booking.userId,
+          amount: payment.amount,
+        });
+
+        this.eventEmitter.emit(Events.BOOKING_CONFIRMED, {
+          bookingId: payment.bookingId,
+          organizationId: payment.organizationId,
+          userId: payment.booking.userId,
+          facilityName: 'facility',
+          startTime: payment.booking.startTime,
         });
 
         return { status: 'success' };

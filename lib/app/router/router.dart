@@ -8,6 +8,7 @@ import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/business_dashboard/presentation/screens/business_dashboard_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/admin_dashboard_screen.dart';
+import '../../features/notifications/presentation/screens/notification_list_screen.dart';
 
 // Placeholder for screens not yet implemented in detail
 class PlaceholderScreen extends StatelessWidget {
@@ -74,6 +75,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/profile',
         name: 'profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        name: 'notifications',
+        builder: (context, state) => const NotificationListScreen(),
       ),
       GoRoute(
         path: '/business-dashboard',

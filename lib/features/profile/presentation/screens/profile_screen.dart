@@ -52,7 +52,7 @@ class ProfileScreen extends ConsumerWidget {
             context,
             Icons.notifications_none,
             'Notifications',
-            () {},
+            () => context.push('/notifications'),
           ),
           const Divider(),
           _buildMenuItem(

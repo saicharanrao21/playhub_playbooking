@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PaymentsService } from './payments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { IPaymentProvider, PAYMENT_PROVIDER } from './interfaces/payment-provider.interface';
@@ -22,12 +23,17 @@ describe('PaymentsService', () => {
     verifySignature: jest.fn(),
   };
 
+  const mockEventEmitter = {
+    emit: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PaymentsService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: PAYMENT_PROVIDER, useValue: mockProvider },
+        { provide: EventEmitter2, useValue: mockEventEmitter },
       ],
     }).compile();
 

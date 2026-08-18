@@ -1,16 +1,19 @@
 import { Injectable, NotFoundException, ForbiddenException, ConflictException, BadRequestException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { AvailabilityService } from '../availability/availability.service';
 import { BookingStatus } from '@prisma/client';
 import { DateTime } from 'luxon';
 import { TimeInterval } from '../common/utils/time-interval.util';
+import { Events } from '../common/constants/events';
 
 @Injectable()
 export class BookingsService {
   constructor(
     private prisma: PrismaService,
     private availabilityService: AvailabilityService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async create(organizationId: string, userId: string, facilityId: string, dto: CreateBookingDto, idempotencyKey?: string) {
@@ -90,7 +93,7 @@ export class BookingsService {
       }
 
       // 3. Create Booking
-      return tx.booking.create({
+      const booking = await tx.booking.create({
         data: {
           organizationId,
           userId,
@@ -101,6 +104,24 @@ export class BookingsService {
           idempotencyKey,
         },
       });
+
+      this.eventEmitter.emit(Events.BOOKING_CREATED, {
+        bookingId: booking.id,
+        organizationId: booking.organizationId,
+        userId: booking.userId,
+        facilityName: facility.name,
+        startTime: booking.startTime,
+      });
+
+      this.eventEmitter.emit(Events.BOOKING_CONFIRMED, {
+        bookingId: booking.id,
+        organizationId: booking.organizationId,
+        userId: booking.userId,
+        facilityName: facility.name,
+        startTime: booking.startTime,
+      });
+
+      return booking;
     }, {
       isolationLevel: 'Serializable',
     });
@@ -147,11 +168,22 @@ export class BookingsService {
        return booking;
     }
 
-    return this.prisma.booking.update({
+    const updatedBooking = await this.prisma.booking.update({
       where: { id },
       data: {
         status: BookingStatus.CANCELLED,
       },
+      include: { facility: true }
     });
+
+    this.eventEmitter.emit(Events.BOOKING_CANCELLED, {
+      bookingId: updatedBooking.id,
+      organizationId: updatedBooking.organizationId,
+      userId: updatedBooking.userId,
+      facilityName: updatedBooking.facility.name,
+      startTime: updatedBooking.startTime,
+    });
+
+    return updatedBooking;
   }
 }

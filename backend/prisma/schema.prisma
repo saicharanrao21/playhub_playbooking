@@ -86,6 +86,15 @@ enum BlockReason {
   OTHER
 }
 
+enum NotificationType {
+  BOOKING_CREATED
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  SYSTEM_ALERT
+}
+
 model User {
   id              String        @id @default(uuid())
   email           String        @unique
@@ -98,10 +107,11 @@ model User {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  memberships Membership[]
-  sessions    Session[]
-  auditLogs   AuditLog[]
-  bookings    Booking[]
+  memberships   Membership[]
+  sessions      Session[]
+  auditLogs     AuditLog[]
+  bookings      Booking[]
+  notifications Notification[]
 
   @@map("users")
 }
@@ -114,10 +124,11 @@ model Organization {
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
 
-  memberships Membership[]
-  businesses  Business[]
-  bookings    Booking[]
-  payments    Payment[]
+  memberships   Membership[]
+  businesses    Business[]
+  bookings      Booking[]
+  payments      Payment[]
+  notifications Notification[]
 
   @@map("organizations")
 }
@@ -262,6 +273,7 @@ model Booking {
   facility     Facility     @relation(fields: [facilityId], references: [id])
   user         User         @relation(fields: [userId], references: [id])
   payments     Payment[]
+  notifications Notification[]
 
   @@index([organizationId])
   @@index([facilityId])
@@ -389,4 +401,27 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
+}
+
+model Notification {
+  id             String           @id @default(uuid())
+  organizationId String
+  userId         String
+  bookingId      String?
+  type           NotificationType
+  title          String
+  message        String
+  data           Json?
+  isRead         Boolean          @default(false)
+  readAt         DateTime?
+  createdAt      DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+  booking      Booking?     @relation(fields: [bookingId], references: [id])
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
 }
