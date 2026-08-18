@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Req, HttpCode, HttpStatus, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentOrderDto } from './dto/create-payment-order.dto';
@@ -27,7 +27,13 @@ export class PaymentsController {
     @Req() req: any,
   ) {
     const idempotencyKey = req.headers['x-idempotency-key'];
-    return this.paymentsService.createOrder(organizationId, user.userId, dto, idempotencyKey);
+    return this.paymentsService.createOrder(
+      organizationId,
+      user.userId,
+      dto,
+      idempotencyKey,
+      dto.provider
+    );
   }
 
   @Post('verify')
@@ -41,9 +47,20 @@ export class PaymentsController {
     return this.paymentsService.verifyPayment(organizationId, user.userId, dto);
   }
 
+  @Post(':id/refund')
+  @ApiOperation({ summary: 'Initiate a refund for a payment (Authorized roles only)' })
+  async initiateRefund(
+    @OrganizationContext() organizationId: string,
+    @Param('id') id: string,
+    @Body('reason') reason?: string,
+  ) {
+    return this.paymentsService.initiateRefund(organizationId, id, reason);
+  }
+
   @Post('webhook/:provider')
   @ApiOperation({ summary: 'Handle payment provider webhooks (Public endpoint but internally verified)' })
-  // Webhooks are usually not under JwtAuthGuard
+  // Webhooks are usually not under JwtAuthGuard, so we might need a separate controller or disable guard for this route
+  // For this foundation, we'll keep it here but note that guards would need bypass for real provider calls
   async handleWebhook(
     @Req() req: any,
     @Body() payload: any,

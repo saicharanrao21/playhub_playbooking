@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { IPaymentProvider, CreateOrderOptions, PaymentOrder } from '../interfaces/payment-provider.interface';
+import {
+  IPaymentProvider,
+  CreateOrderOptions,
+  PaymentOrder,
+  RefundOptions,
+  RefundResult,
+} from '../interfaces/payment-provider.interface';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -15,5 +21,12 @@ export class MockPaymentProvider implements IPaymentProvider {
   verifySignature(payload: any, signature: string): boolean {
     // In mock, any signature starting with 'valid_' is fine
     return signature.startsWith('valid_');
+  }
+
+  async initiateRefund(options: RefundOptions): Promise<RefundResult> {
+    return {
+      id: `ref_mock_${crypto.randomUUID()}`,
+      status: 'processed',
+    };
   }
 }

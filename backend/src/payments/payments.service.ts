@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ConflictException, ForbiddenException, B
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { IPaymentProvider, PAYMENT_PROVIDER } from './interfaces/payment-provider.interface';
+import { PaymentProviderFactory } from './providers/payment-provider.factory';
 import { CreatePaymentOrderDto } from './dto/create-payment-order.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
 import { PaymentStatus, BookingStatus, PaymentProvider } from '@prisma/client';
@@ -20,13 +21,11 @@ export class PaymentsService {
 
   constructor(
     private prisma: PrismaService,
-    @Inject(PAYMENT_PROVIDER) private provider: IPaymentProvider,
+    private providerFactory: PaymentProviderFactory,
     private eventEmitter: EventEmitter2,
+    @Inject(PAYMENT_PROVIDER) private defaultProvider: IPaymentProvider,
   ) {}
 
-  /**
-   * Validates if a transition from current status to next status is allowed.
-   */
   private canTransition(current: PaymentStatus, next: PaymentStatus): boolean {
     if (current === next) return true;
     if (this.TERMINAL_STATES.includes(current) && next !== PaymentStatus.REFUNDED) {
@@ -49,7 +48,13 @@ export class PaymentsService {
     return allowed[current]?.includes(next) || false;
   }
 
-  async createOrder(organizationId: string, userId: string, dto: CreatePaymentOrderDto, idempotencyKey?: string) {
+  async createOrder(
+    organizationId: string,
+    userId: string,
+    dto: CreatePaymentOrderDto,
+    idempotencyKey?: string,
+    requestedProvider: PaymentProvider = PaymentProvider.RAZORPAY
+  ) {
     const booking = await this.prisma.booking.findFirst({
       where: { id: dto.bookingId, organizationId },
       include: { payments: true }
@@ -63,7 +68,6 @@ export class PaymentsService {
       throw new BadRequestException('Cannot pay for a cancelled booking');
     }
 
-    // 1. Idempotency Check
     if (idempotencyKey) {
       const existing = await this.prisma.payment.findUnique({
         where: { idempotencyKey }
@@ -76,7 +80,6 @@ export class PaymentsService {
       }
     }
 
-    // 2. Check for existing successful or authorized payments
     const activePayment = booking.payments.find(p =>
       p.status === PaymentStatus.CAPTURED || p.status === PaymentStatus.AUTHORIZED
     );
@@ -89,12 +92,14 @@ export class PaymentsService {
     }
 
     const amountInMinorUnits = Math.round(Number(booking.totalPrice) * 100);
+    const provider = this.providerFactory.getProvider(requestedProvider);
 
-    const order = await this.provider.createOrder({
+    const order = await provider.createOrder({
       amount: amountInMinorUnits,
       currency: booking.currency || 'INR',
       receipt: booking.id,
-      notes: { organizationId, bookingId: booking.id, userId }
+      notes: { organizationId, bookingId: booking.id, userId },
+      metadata: { provider: requestedProvider }
     });
 
     return this.prisma.payment.create({
@@ -104,9 +109,10 @@ export class PaymentsService {
         amount: booking.totalPrice,
         currency: booking.currency || 'INR',
         status: PaymentStatus.INITIATED,
-        provider: PaymentProvider.MOCK,
+        provider: requestedProvider,
         providerOrderId: order.id,
         idempotencyKey,
+        metadata: order.providerMetadata || {},
       }
     });
   }
@@ -129,13 +135,13 @@ export class PaymentsService {
       throw new BadRequestException(`Invalid state transition from ${payment.status} to CAPTURED`);
     }
 
-    const isValid = this.provider.verifySignature(dto, dto.signature);
+    const provider = this.providerFactory.getProvider(payment.provider);
+    const isValid = provider.verifySignature(dto, dto.signature);
     if (!isValid) {
       throw new BadRequestException('Invalid payment signature');
     }
 
     return this.prisma.$transaction(async (tx) => {
-      // Re-verify status inside transaction for concurrency safety
       const latestPayment = await tx.payment.findUnique({
         where: { id: payment.id }
       });
@@ -143,18 +149,19 @@ export class PaymentsService {
         return { status: 'success', booking: payment.booking };
       }
 
-      // 1. Update Payment record
       const updatedPayment = await tx.payment.update({
         where: { id: payment.id },
         data: {
           status: PaymentStatus.CAPTURED,
           providerPaymentId: dto.providerPaymentId,
           providerSignature: dto.signature,
-          metadata: dto.metadata,
+          metadata: {
+            ...(payment.metadata as any || {}),
+            ...dto.metadata,
+          },
         }
       });
 
-      // 2. Update Booking record only if not cancelled
       const updatedBooking = await tx.booking.update({
         where: {
           id: payment.bookingId,
@@ -168,7 +175,6 @@ export class PaymentsService {
         return null;
       });
 
-      // 3. Audit
       await tx.auditLog.create({
         data: {
           userId,
@@ -206,24 +212,27 @@ export class PaymentsService {
     }, { isolationLevel: 'Serializable' });
   }
 
-  async handleWebhook(provider: string, payload: any, signature: string) {
-    this.logger.log(`Received webhook for ${provider}`);
+  async handleWebhook(providerType: string, payload: any, signature: string) {
+    this.logger.log(`Received webhook for ${providerType}`);
 
-    const isValid = this.provider.verifySignature(payload, signature);
+    const pType = providerType.toUpperCase() as PaymentProvider;
+    const provider = this.providerFactory.getProvider(pType);
+
+    const isValid = provider.verifySignature(payload, signature);
     if (!isValid) {
-      this.logger.warn(`Invalid webhook signature from ${provider}`);
+      this.logger.warn(`Invalid webhook signature from ${providerType}`);
       throw new BadRequestException('Invalid webhook signature');
     }
 
-    const providerOrderId = payload.order_id || payload.data?.object?.id;
-    const providerPaymentId = payload.payment_id || payload.data?.object?.payment_intent;
-    const eventType = payload.event;
+    const providerOrderId = payload.order_id || payload.data?.object?.id || payload.payload?.payment?.entity?.order_id;
+    const providerPaymentId = payload.payment_id || payload.data?.object?.payment_intent || payload.payload?.payment?.entity?.id;
+    const eventType = payload.event || payload.type;
 
     if (!providerOrderId) {
       return { status: 'ignored', reason: 'No order ID found' };
     }
 
-    if (eventType === 'payment.captured' || eventType === 'checkout.session.completed') {
+    if (eventType === 'payment.captured' || eventType === 'checkout.session.completed' || eventType === 'payment_intent.succeeded') {
       const payment = await this.prisma.payment.findUnique({
         where: { providerOrderId },
         include: { booking: true }
@@ -252,8 +261,6 @@ export class PaymentsService {
           }
         });
 
-        if (!updatedPayment) return { status: 'noop', reason: 'Concurrent update' };
-
         const updatedBooking = await tx.booking.update({
           where: {
             id: payment.bookingId,
@@ -269,7 +276,7 @@ export class PaymentsService {
             resource: 'payment',
             resourceId: payment.id,
             status: 'success',
-            payload: { provider, eventType, previousStatus: payment.status }
+            payload: { provider: providerType, eventType, previousStatus: payment.status }
           }
         });
 
@@ -296,5 +303,43 @@ export class PaymentsService {
     }
 
     return { received: true };
+  }
+
+  async initiateRefund(organizationId: string, paymentId: string, reason?: string) {
+    const payment = await this.prisma.payment.findFirst({
+      where: { id: paymentId, organizationId },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment record not found');
+    }
+
+    if (payment.status !== PaymentStatus.CAPTURED) {
+      throw new BadRequestException('Only captured payments can be refunded');
+    }
+
+    const provider = this.providerFactory.getProvider(payment.provider);
+
+    try {
+      const refundResult = await provider.initiateRefund({
+        paymentId: payment.providerPaymentId || payment.providerOrderId,
+        notes: { reason: reason || 'User requested' }
+      });
+
+      return this.prisma.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: PaymentStatus.REFUNDED,
+          metadata: {
+            ...(payment.metadata as any || {}),
+            refundId: refundResult.id,
+            refundStatus: refundResult.status,
+          }
+        }
+      });
+    } catch (error) {
+      this.logger.error(`Refund failed for payment ${paymentId}`, error.stack);
+      throw new BadRequestException('Failed to initiate refund with provider');
+    }
   }
 }

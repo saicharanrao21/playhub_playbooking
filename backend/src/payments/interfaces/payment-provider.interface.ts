@@ -5,15 +5,29 @@ export interface CreateOrderOptions {
   currency: string;
   receipt: string;
   notes?: Record<string, string>;
+  metadata?: Record<string, any>;
 }
 
 export interface PaymentOrder {
-  id: string; // Provider's order ID
+  id: string; // Provider's order ID or client secret
   amount: number;
   currency: string;
+  providerMetadata?: any;
+}
+
+export interface RefundOptions {
+  paymentId: string;
+  amount?: number; // Optional, full refund if not provided
+  notes?: Record<string, string>;
+}
+
+export interface RefundResult {
+  id: string;
+  status: string;
 }
 
 export interface IPaymentProvider {
   createOrder(options: CreateOrderOptions): Promise<PaymentOrder>;
   verifySignature(payload: any, signature: string): boolean;
+  initiateRefund(options: RefundOptions): Promise<RefundResult>;
 }

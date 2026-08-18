@@ -9,10 +9,13 @@ class PaymentRepository {
 
   String get _baseUrl => '/organizations/$_organizationId/payments';
 
-  Future<PaymentOrder?> createOrder(String bookingId) async {
+  Future<PaymentOrder?> createOrder(String bookingId, {PaymentProvider? provider}) async {
     final response = await _apiClient.post(
       '$_baseUrl/order',
-      data: {'bookingId': bookingId},
+      data: {
+        'bookingId': bookingId,
+        if (provider != null) 'provider': provider.name.toUpperCase(),
+      },
     );
 
     if (response.isSuccess) {
@@ -25,6 +28,7 @@ class PaymentRepository {
     required String providerOrderId,
     required String providerPaymentId,
     required String signature,
+    Map<String, dynamic>? metadata,
   }) async {
     final response = await _apiClient.post(
       '$_baseUrl/verify',
@@ -32,9 +36,18 @@ class PaymentRepository {
         'providerOrderId': providerOrderId,
         'providerPaymentId': providerPaymentId,
         'signature': signature,
+        if (metadata != null) 'metadata': metadata,
       },
     );
 
+    return response.isSuccess;
+  }
+
+  Future<bool> initiateRefund(String paymentId, {String? reason}) async {
+    final response = await _apiClient.post(
+      '$_baseUrl/$paymentId/refund',
+      data: {'reason': reason},
+    );
     return response.isSuccess;
   }
 }

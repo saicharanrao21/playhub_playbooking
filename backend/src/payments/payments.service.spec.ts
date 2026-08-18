@@ -3,13 +3,14 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PaymentsService } from './payments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { IPaymentProvider, PAYMENT_PROVIDER } from './interfaces/payment-provider.interface';
-import { BookingStatus, PaymentStatus } from '@prisma/client';
+import { PaymentProviderFactory } from './providers/payment-provider.factory';
+import { BookingStatus, PaymentStatus, PaymentProvider } from '@prisma/client';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 
 describe('PaymentsService', () => {
   let service: PaymentsService;
   let prisma: PrismaService;
-  let provider: IPaymentProvider;
+  let factory: PaymentProviderFactory;
 
   const mockPrisma = {
     booking: { findFirst: jest.fn(), update: jest.fn().mockReturnValue(Promise.resolve({})) },
@@ -21,6 +22,11 @@ describe('PaymentsService', () => {
   const mockProvider = {
     createOrder: jest.fn(),
     verifySignature: jest.fn(),
+    initiateRefund: jest.fn(),
+  };
+
+  const mockFactory = {
+    getProvider: jest.fn().mockReturnValue(mockProvider),
   };
 
   const mockEventEmitter = {
@@ -32,6 +38,7 @@ describe('PaymentsService', () => {
       providers: [
         PaymentsService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: PaymentProviderFactory, useValue: mockFactory },
         { provide: PAYMENT_PROVIDER, useValue: mockProvider },
         { provide: EventEmitter2, useValue: mockEventEmitter },
       ],
@@ -39,7 +46,7 @@ describe('PaymentsService', () => {
 
     service = module.get<PaymentsService>(PaymentsService);
     prisma = module.get<PrismaService>(PrismaService);
-    provider = module.get<IPaymentProvider>(PAYMENT_PROVIDER);
+    factory = module.get<PaymentProviderFactory>(PaymentProviderFactory);
 
     jest.clearAllMocks();
   });
