@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:playhub_playbooking/core/providers/repository_providers.dart';
 import '../../domain/models/venue_models.dart' as domain;
+import '../../data/venue_repository.dart';
 import 'package:go_router/go_router.dart';
 
 final venueDetailsProvider = FutureProvider.family<domain.Venue?, String>((
@@ -9,6 +10,10 @@ final venueDetailsProvider = FutureProvider.family<domain.Venue?, String>((
   id,
 ) async {
   final repo = ref.watch(venueRepositoryProvider);
+  if (repo is VenueRepository) {
+    return repo.getFullVenue(id);
+  }
+  
   final venue = await repo.getVenueById(id);
   if (venue == null) return null;
   
@@ -25,15 +30,14 @@ final venueDetailsProvider = FutureProvider.family<domain.Venue?, String>((
     postalCode: '',
     timezone: 'UTC',
     status: domain.VenueStatus.active,
-    facilities: [
-      domain.Facility(
-        id: 'f1',
-        venueId: venue.id,
-        categoryId: 'cat1',
-        name: 'Main Court',
-        status: domain.FacilityStatus.active,
-      ),
-    ],
+    facilities: venue.facilities?.map((f) => domain.Facility(
+      id: f.id,
+      venueId: venue.id,
+      categoryId: '',
+      name: f.name,
+      description: f.description,
+      status: domain.FacilityStatus.active,
+    )).toList(),
   );
 });
 
@@ -106,7 +110,10 @@ class VenueDetailsScreen extends ConsumerWidget {
                               title: Text(f.name),
                               subtitle: Text(f.description ?? ''),
                               trailing: ElevatedButton(
-                                onPressed: () => context.push('/availability/${f.id}'),
+                                onPressed: () => context.push(
+                                  '/availability/${f.id}',
+                                  extra: {'facilityName': f.name},
+                                ),
                                 child: const Text('Check Availability'),
                               ),
                             ),

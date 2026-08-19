@@ -5,7 +5,8 @@ import '../providers/availability_provider.dart';
 
 class AvailabilityScreen extends ConsumerStatefulWidget {
   final String facilityId;
-  const AvailabilityScreen({super.key, required this.facilityId});
+  final String? facilityName;
+  const AvailabilityScreen({super.key, required this.facilityId, this.facilityName});
 
   @override
   ConsumerState<AvailabilityScreen> createState() => _AvailabilityScreenState();
@@ -59,6 +60,7 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
                          // Navigate to Review Screen
                          context.push('/booking/review', extra: {
                            'facilityId': widget.facilityId,
+                           'facilityName': widget.facilityName,
                            'startTime': slot.start.toIso8601String(),
                            'endTime': slot.end.toIso8601String(),
                          });

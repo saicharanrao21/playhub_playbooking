@@ -106,8 +106,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/availability/:facilityId',
         name: 'availability',
-        builder: (context, state) =>
-            AvailabilityScreen(facilityId: state.pathParameters['facilityId']!),
+        builder: (context, state) {
+          final facilityId = state.pathParameters['facilityId']!;
+          final extra = state.extra as Map<String, dynamic>?;
+          return AvailabilityScreen(
+            facilityId: facilityId,
+            facilityName: extra?['facilityName'],
+          );
+        },
       ),
       GoRoute(
         path: '/booking/review',
@@ -116,6 +122,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           final extra = state.extra as Map<String, dynamic>;
           return BookingReviewScreen(
             facilityId: extra['facilityId'],
+            facilityName: extra['facilityName'],
             startTime: DateTime.parse(extra['startTime']),
             endTime: DateTime.parse(extra['endTime']),
           );

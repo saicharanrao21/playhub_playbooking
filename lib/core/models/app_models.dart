@@ -48,6 +48,7 @@ class Venue {
   final double rating;
   final int reviewCount;
   final String categoryId;
+  final List<Facility>? facilities; 
 
   Venue({
     required this.id,
@@ -63,6 +64,19 @@ class Venue {
     required this.rating,
     required this.reviewCount,
     required this.categoryId,
+    this.facilities,
+  });
+}
+
+class Facility {
+  final String id;
+  final String name;
+  final String? description;
+
+  Facility({
+    required this.id,
+    required this.name,
+    this.description,
   });
 }
 

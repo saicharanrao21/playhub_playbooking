@@ -5,12 +5,14 @@ import '../providers/booking_provider.dart';
 
 class BookingReviewScreen extends ConsumerStatefulWidget {
   final String facilityId;
+  final String? facilityName;
   final DateTime startTime;
   final DateTime endTime;
 
   const BookingReviewScreen({
     super.key,
     required this.facilityId,
+    this.facilityName,
     required this.startTime,
     required this.endTime,
   });
@@ -72,7 +74,7 @@ class _BookingReviewScreenState extends ConsumerState<BookingReviewScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Venue & Facility', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            Text('Facility ID: ${widget.facilityId}'),
+            Text('Facility: ${widget.facilityName ?? widget.facilityId}'),
             const SizedBox(height: 16),
             const Text('Date & Time', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             Text('Date: ${widget.startTime.toString().split(' ')[0]}'),
