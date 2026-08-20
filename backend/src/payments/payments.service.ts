@@ -127,6 +127,10 @@ export class PaymentsService {
       throw new NotFoundException('Payment record not found');
     }
 
+    if (payment.booking.userId !== userId) {
+      throw new ForbiddenException('Not authorized to verify this payment');
+    }
+
     if (payment.status === PaymentStatus.CAPTURED) {
        return { status: 'success', booking: payment.booking };
     }

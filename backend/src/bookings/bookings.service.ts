@@ -171,8 +171,8 @@ export class BookingsService {
     });
   }
 
-  async cancel(organizationId: string, id: string, reason?: string) {
-    const booking = await this.findOne(organizationId, id);
+  async cancel(organizationId: string, id: string, reason?: string, userId?: string) {
+    const booking = await this.findOne(organizationId, id, userId);
 
     if (booking.status === BookingStatus.CANCELLED) {
        return booking;

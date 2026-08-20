@@ -24,4 +24,7 @@ export const Permissions = {
   BOOKING_READ: 'read:booking',
   BOOKING_UPDATE: 'update:booking',
   BOOKING_DELETE: 'delete:booking',
+
+  PAYMENT_READ: 'read:payment',
+  PAYMENT_UPDATE: 'update:payment',
 };

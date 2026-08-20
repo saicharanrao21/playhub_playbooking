@@ -125,6 +125,7 @@ describe('PaymentsService', () => {
       id: 'p1',
       organizationId: 'org1',
       status: PaymentStatus.FAILED,
+      booking: { userId: 'u1' }
     });
 
     await expect(service.verifyPayment('org1', 'u1', {

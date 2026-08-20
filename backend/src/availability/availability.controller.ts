@@ -3,11 +3,12 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader, ApiQuery } from '@nest
 import { AvailabilityService } from './availability.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { OrganizationContext } from '../common/decorators/organization-context.decorator';
 
 @ApiTags('availability')
 @Controller('organizations/:organizationId/availability')
-@UseGuards(JwtAuthGuard, OrganizationGuard)
+@UseGuards(JwtAuthGuard, OrganizationGuard, PermissionsGuard)
 @ApiBearerAuth()
 @ApiHeader({ name: 'x-organization-id', required: false })
 export class AvailabilityController {

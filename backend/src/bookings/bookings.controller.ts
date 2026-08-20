@@ -6,13 +6,16 @@ import { RescheduleBookingDto } from './dto/reschedule-booking.dto';
 import { CancelBookingDto } from './dto/cancel-booking.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { RequirePermission } from '../common/decorators/require-permission.decorator';
+import { Permissions } from '../common/constants/permissions';
 import { OrganizationContext } from '../common/decorators/organization-context.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserIdentity } from '../common/interfaces/user-identity.interface';
 
 @ApiTags('bookings')
 @Controller('organizations/:organizationId/bookings')
-@UseGuards(JwtAuthGuard, OrganizationGuard)
+@UseGuards(JwtAuthGuard, OrganizationGuard, PermissionsGuard)
 @ApiBearerAuth()
 @ApiHeader({ name: 'x-organization-id', required: false })
 @ApiHeader({ name: 'x-idempotency-key', required: false })
@@ -44,6 +47,7 @@ export class BookingsController {
   }
 
   @Get('all')
+  @RequirePermission(Permissions.BOOKING_READ)
   @ApiOperation({ summary: 'List all bookings in the organization (Admin/Operator only)' })
   @ApiQuery({ name: 'userId', required: false })
   @ApiQuery({ name: 'facilityId', required: false })
@@ -60,8 +64,12 @@ export class BookingsController {
   async findOne(
     @OrganizationContext() organizationId: string,
     @Param('id') id: string,
+    @CurrentUser() user: UserIdentity,
   ) {
-    return this.bookingsService.findOne(organizationId, id);
+    // If not privileged, enforce ownership check via userId
+    const isPrivileged = user.roles.includes('ADMIN') || user.roles.includes('BUSINESS_OWNER');
+    const userId = isPrivileged ? undefined : user.userId;
+    return this.bookingsService.findOne(organizationId, id, userId);
   }
 
   @Patch(':id/cancel')
@@ -70,8 +78,12 @@ export class BookingsController {
     @OrganizationContext() organizationId: string,
     @Param('id') id: string,
     @Body() dto: CancelBookingDto,
+    @CurrentUser() user: UserIdentity,
   ) {
-    return this.bookingsService.cancel(organizationId, id, dto.reason);
+    // If not privileged, enforce ownership check via userId
+    const isPrivileged = user.roles.includes('ADMIN') || user.roles.includes('BUSINESS_OWNER');
+    const userId = isPrivileged ? undefined : user.userId;
+    return this.bookingsService.cancel(organizationId, id, dto.reason, userId);
   }
 
   @Patch(':id/reschedule')
