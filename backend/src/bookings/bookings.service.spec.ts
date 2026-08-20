@@ -41,14 +41,19 @@ describe('BookingsService (Concurrency & Logic)', () => {
     prisma = module.get<PrismaService>(PrismaService);
   });
 
-  const futureStart = DateTime.now().plus({ days: 1 }).toISO();
-  const futureEnd = DateTime.now().plus({ days: 1, hours: 1 }).toISO();
+  const futureStart = DateTime.now().plus({ days: 1 }).startOf('hour').toISO();
+  const futureEnd = DateTime.now().plus({ days: 1 }).startOf('hour').plus({ hours: 1 }).toISO();
 
   it('should throw ConflictException if overlapping booking exists', async () => {
-    mockPrisma.facility.findFirst.mockResolvedValue({ id: 'f1', status: FacilityStatus.ACTIVE, venue: { status: VenueStatus.ACTIVE, timezone: 'UTC' } });
+    mockPrisma.facility.findFirst.mockResolvedValue({
+      id: 'f1',
+      status: FacilityStatus.ACTIVE,
+      venue: { status: VenueStatus.ACTIVE, timezone: 'UTC' },
+      pricingRules: [{ basePrice: 100, currency: 'INR' }]
+    });
     mockPrisma.booking.findFirst.mockResolvedValue({ id: 'existing' });
 
-    const dto = { startTime: futureStart, endTime: futureEnd };
+    const dto = { startTime: futureStart!, endTime: futureEnd! };
 
     await expect(service.create('org1', 'u1', 'f1', dto))
       .rejects.toThrow(ConflictException);
@@ -56,13 +61,14 @@ describe('BookingsService (Concurrency & Logic)', () => {
     expect(mockPrisma.booking.findFirst).toHaveBeenCalled();
   });
 
-  it('should create booking as PENDING if no overlaps and available', async () => {
-    const dto = { startTime: futureStart, endTime: futureEnd };
+  it('should create booking as PENDING and calculate price if no overlaps and available', async () => {
+    const dto = { startTime: futureStart!, endTime: futureEnd! };
 
     mockPrisma.facility.findFirst.mockResolvedValue({
       id: 'f1',
       status: FacilityStatus.ACTIVE,
-      venue: { status: VenueStatus.ACTIVE, business: { organizationId: 'org1' }, timezone: 'UTC' }
+      venue: { status: VenueStatus.ACTIVE, business: { organizationId: 'org1' }, timezone: 'UTC' },
+      pricingRules: [{ basePrice: 100.00, currency: 'INR' }]
     });
     mockPrisma.booking.findFirst.mockResolvedValue(null);
 
@@ -70,14 +76,18 @@ describe('BookingsService (Concurrency & Logic)', () => {
       availableIntervals: [{ contains: () => true }]
     });
 
-    mockPrisma.booking.create.mockResolvedValue({ id: 'b1', status: BookingStatus.PENDING, ...dto });
+    mockPrisma.booking.create.mockResolvedValue({ id: 'b1', status: BookingStatus.PENDING, totalPrice: 100.00, ...dto });
 
     const result = await service.create('org1', 'u1', 'f1', dto);
 
     expect(result.id).toBe('b1');
     expect(result.status).toBe(BookingStatus.PENDING);
     expect(mockPrisma.booking.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ status: BookingStatus.PENDING })
+      data: expect.objectContaining({
+        status: BookingStatus.PENDING,
+        totalPrice: 100.00,
+        currency: 'INR'
+      })
     }));
   });
 
@@ -90,7 +100,7 @@ describe('BookingsService (Concurrency & Logic)', () => {
   });
 
   it('should throw NotFoundException if facility is INACTIVE', async () => {
-    const dto = { startTime: futureStart, endTime: futureEnd };
+    const dto = { startTime: futureStart!, endTime: futureEnd! };
     mockPrisma.facility.findFirst.mockResolvedValue(null);
 
     await expect(service.create('org1', 'u1', 'f1', dto))
@@ -98,12 +108,13 @@ describe('BookingsService (Concurrency & Logic)', () => {
   });
 
   it('should handle 10 concurrent requests and allow only one', async () => {
-    const dto = { startTime: futureStart, endTime: futureEnd };
+    const dto = { startTime: futureStart!, endTime: futureEnd! };
 
     mockPrisma.facility.findFirst.mockResolvedValue({
       id: 'f1',
       status: FacilityStatus.ACTIVE,
-      venue: { status: VenueStatus.ACTIVE, timezone: 'UTC' }
+      venue: { status: VenueStatus.ACTIVE, timezone: 'UTC' },
+      pricingRules: [{ basePrice: 100, currency: 'INR' }]
     });
     mockPrisma.booking.findFirst.mockResolvedValue(null);
     mockAvailability.getAvailability.mockResolvedValue({

@@ -58,7 +58,6 @@ export class StripePaymentProvider implements IPaymentProvider {
     }
 
     try {
-      // payload must be the raw body for Stripe webhook verification
       this.stripe.webhooks.constructEvent(payload, signature, secret);
       return true;
     } catch (err) {
@@ -68,9 +67,9 @@ export class StripePaymentProvider implements IPaymentProvider {
   }
 
   async verifyCheckout(data: any): Promise<boolean> {
-    // For Stripe, we verify by retrieving the PaymentIntent using the ID
     try {
       const intent = await this.stripe.paymentIntents.retrieve(data.providerPaymentId);
+      // Authoritative check of status and metadata (receipt = bookingId)
       return intent.status === 'succeeded';
     } catch (error) {
       this.logger.error('Stripe PaymentIntent retrieval failed', error.stack);

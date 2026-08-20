@@ -23,6 +23,10 @@ export class MockPaymentProvider implements IPaymentProvider {
     return signature.startsWith('valid_');
   }
 
+  async verifyCheckout(data: any): Promise<boolean> {
+     return data.signature.startsWith('valid_');
+  }
+
   async initiateRefund(options: RefundOptions): Promise<RefundResult> {
     return {
       id: `ref_mock_${crypto.randomUUID()}`,

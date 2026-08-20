@@ -88,6 +88,28 @@ describe('PaymentsService', () => {
     }));
   });
 
+  it('should use verifyCheckout if available during verifyPayment', async () => {
+    const dto = {
+      providerOrderId: 'order_123',
+      providerPaymentId: 'pay_abc',
+      signature: 'valid_sig'
+    };
+
+    mockPrisma.payment.findUnique.mockResolvedValue({
+      id: 'p1',
+      organizationId: 'org1',
+      bookingId: 'b1',
+      status: PaymentStatus.INITIATED,
+      booking: { userId: 'u1' }
+    });
+
+    mockProvider.verifyCheckout.mockResolvedValue(true);
+
+    await service.verifyPayment('org1', 'u1', dto);
+
+    expect(mockProvider.verifyCheckout).toHaveBeenCalledWith(dto);
+  });
+
   it('should process webhook capture successfully', async () => {
     const payload = { event: 'payment.captured', order_id: 'order_123', payment_id: 'pay_abc' };
     const signature = 'valid_sig';

@@ -2,6 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/booking_provider.dart';
+import '../../../payments/data/payment_repository.dart';
+import '../../../../core/security/auth_provider.dart';
+import '../../../../app/bootstrap/bootstrap.dart';
+
+final paymentRepositoryProvider = Provider<PaymentRepository>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  final orgId = ref.watch(activeOrganizationProvider) ?? '';
+  return PaymentRepository(apiClient, orgId);
+});
 
 class BookingReviewScreen extends ConsumerStatefulWidget {
   final String facilityId;
@@ -30,23 +39,47 @@ class _BookingReviewScreenState extends ConsumerState<BookingReviewScreen> {
     });
 
     try {
-      final repository = ref.read(bookingRepositoryProvider);
-      final booking = await repository.createBooking(
+      final bookingRepo = ref.read(bookingRepositoryProvider);
+      final paymentRepo = ref.read(paymentRepositoryProvider);
+      
+      // 1. Create Pending Booking
+      final booking = await bookingRepo.createBooking(
         facilityId: widget.facilityId,
         startTime: widget.startTime,
         endTime: widget.endTime,
       );
 
+      if (booking == null) {
+        throw Exception('Failed to create booking');
+      }
+
+      // 2. Initiate Payment Order
+      final order = await paymentRepo.createOrder(booking.id);
+      if (order == null) {
+        throw Exception('Failed to initiate payment order');
+      }
+
+      // 3. Trigger Payment Provider (Simulated Success for now)
+      // In a real implementation, this would call Razorpay/Stripe SDK.
+      // After SDK success, we call verify.
+      
+      final verified = await paymentRepo.verifyPayment(
+        providerOrderId: order.id,
+        providerPaymentId: 'pay_simulated_${booking.id}',
+        signature: 'valid_simulated_sig',
+      );
+
       if (mounted) {
-        if (booking != null) {
+        if (verified) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Booking created successfully!')),
+            const SnackBar(content: Text('Booking confirmed successfully!')),
           );
-          context.go('/profile'); // Or to "My Bookings"
+          context.go('/bookings'); 
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to create booking.')),
+            const SnackBar(content: Text('Payment verification failed. Please check your bookings.')),
           );
+          context.go('/bookings');
         }
       }
     } catch (e) {

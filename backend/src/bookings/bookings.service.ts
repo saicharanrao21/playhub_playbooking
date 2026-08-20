@@ -65,6 +65,10 @@ export class BookingsService {
       },
       include: {
         venue: true,
+        pricingRules: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
       },
     });
 
@@ -73,6 +77,14 @@ export class BookingsService {
     }
 
     const requestedInterval = new TimeInterval(requestedStart, requestedEnd);
+
+    // Calculate total price based on duration and basePrice
+    const durationInHours = requestedEnd.diff(requestedStart, 'hours').hours;
+    const pricingRule = facility.pricingRules[0];
+    if (!pricingRule) {
+      throw new BadRequestException('No pricing rule found for this facility');
+    }
+    const totalPrice = Number(pricingRule.basePrice) * durationInHours;
 
     // 2. Concurrency-Safe Transaction
     return this.prisma.$transaction(async (tx) => {
@@ -126,6 +138,8 @@ export class BookingsService {
           startTime: requestedStart.toJSDate(),
           endTime: requestedEnd.toJSDate(),
           status: BookingStatus.PENDING,
+          totalPrice,
+          currency: pricingRule.currency,
           idempotencyKey,
         },
       });
