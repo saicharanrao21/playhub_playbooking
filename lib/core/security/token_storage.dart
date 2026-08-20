@@ -6,6 +6,7 @@ class TokenStorage {
 
   static const _keyAccessToken = 'access_token';
   static const _keyRefreshToken = 'refresh_token';
+  static const _keyActiveOrgId = 'active_organization_id';
 
   TokenStorage(this._storage);
 
@@ -25,8 +26,17 @@ class TokenStorage {
     return await _storage.read(_keyRefreshToken);
   }
 
+  Future<void> saveActiveOrgId(String orgId) async {
+    await _storage.write(_keyActiveOrgId, orgId);
+  }
+
+  Future<String?> readActiveOrgId() async {
+    return await _storage.read(_keyActiveOrgId);
+  }
+
   Future<void> clearTokens() async {
     await _storage.delete(_keyAccessToken);
     await _storage.delete(_keyRefreshToken);
+    await _storage.delete(_keyActiveOrgId);
   }
 }

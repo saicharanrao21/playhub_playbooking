@@ -6,8 +6,7 @@ import 'package:playhub_playbooking/core/security/auth_provider.dart';
 
 final availabilityRepositoryProvider = Provider<AvailabilityRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  final authState = ref.watch(authStateProvider);
-  final orgId = authState.identity?.organizationId ?? '';
+  final orgId = ref.watch(activeOrganizationProvider) ?? '';
   return AvailabilityRepository(apiClient, orgId);
 });
 

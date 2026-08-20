@@ -7,13 +7,8 @@ import '../../features/venues/data/venue_repository.dart';
 
 final venueRepositoryProvider = Provider<IVenueRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  final authState = ref.watch(authStateProvider);
-  final orgId = authState.identity?.organizationId ?? '';
+  final orgId = ref.watch(activeOrganizationProvider) ?? '';
   return VenueRepository(apiClient, orgId);
-});
-
-final authRepositoryProvider = Provider<IAuthRepository>((ref) {
-  return DummyAuthRepository();
 });
 
 final categoryRepositoryProvider = Provider<ICategoryRepository>((ref) {
