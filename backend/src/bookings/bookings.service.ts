@@ -17,6 +17,24 @@ export class BookingsService {
     private eventEmitter: EventEmitter2,
   ) {}
 
+  /**
+   * Validates if a transition from current status to next status is allowed.
+   */
+  private validateStatusTransition(current: BookingStatus, next: BookingStatus) {
+    if (current === next) return;
+
+    const allowedTransitions: Record<BookingStatus, BookingStatus[]> = {
+      [BookingStatus.PENDING]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
+      [BookingStatus.CONFIRMED]: [BookingStatus.COMPLETED, BookingStatus.CANCELLED],
+      [BookingStatus.CANCELLED]: [], // Terminal state
+      [BookingStatus.COMPLETED]: [], // Terminal state
+    };
+
+    if (!allowedTransitions[current].includes(next)) {
+      throw new BadRequestException(`Invalid booking status transition from ${current} to ${next}`);
+    }
+  }
+
   async create(organizationId: string, userId: string, facilityId: string, dto: CreateBookingDto, idempotencyKey?: string) {
     const requestedStart = DateTime.fromISO(dto.startTime);
     const requestedEnd = DateTime.fromISO(dto.endTime);
@@ -27,6 +45,10 @@ export class BookingsService {
 
     if (requestedStart >= requestedEnd) {
       throw new BadRequestException('Start time must be before end time');
+    }
+
+    if (requestedStart < DateTime.now()) {
+      throw new BadRequestException('Cannot create a booking in the past');
     }
 
     // 1. Verify facility existence and ownership
@@ -93,7 +115,7 @@ export class BookingsService {
         throw new ConflictException('Requested time is outside operational hours or blocked');
       }
 
-      // 3. Create Booking
+      // 3. Create Booking - Start as PENDING (awaiting payment confirmation)
       const booking = await tx.booking.create({
         data: {
           organizationId,
@@ -101,20 +123,12 @@ export class BookingsService {
           facilityId,
           startTime: requestedStart.toJSDate(),
           endTime: requestedEnd.toJSDate(),
-          status: BookingStatus.CONFIRMED,
+          status: BookingStatus.PENDING,
           idempotencyKey,
         },
       });
 
       this.eventEmitter.emit(Events.BOOKING_CREATED, {
-        bookingId: booking.id,
-        organizationId: booking.organizationId,
-        userId: booking.userId,
-        facilityName: facility.name,
-        startTime: booking.startTime,
-      });
-
-      this.eventEmitter.emit(Events.BOOKING_CONFIRMED, {
         bookingId: booking.id,
         organizationId: booking.organizationId,
         userId: booking.userId,
@@ -174,13 +188,7 @@ export class BookingsService {
   async cancel(organizationId: string, id: string, reason?: string, userId?: string) {
     const booking = await this.findOne(organizationId, id, userId);
 
-    if (booking.status === BookingStatus.CANCELLED) {
-       return booking;
-    }
-
-    if (booking.status === BookingStatus.COMPLETED) {
-      throw new BadRequestException('Cannot cancel a completed booking');
-    }
+    this.validateStatusTransition(booking.status, BookingStatus.CANCELLED);
 
     return this.prisma.$transaction(async (tx) => {
       const updatedBooking = await tx.booking.update({
@@ -214,7 +222,7 @@ export class BookingsService {
     });
   }
 
-  async reschedule(organizationId: string, userId: string, bookingId: string, dto: RescheduleBookingDto) {
+  async reschedule(organizationId: string, bookingId: string, dto: RescheduleBookingDto, userId?: string) {
     const newStart = DateTime.fromISO(dto.newStartTime);
     const newEnd = DateTime.fromISO(dto.newEndTime);
 
@@ -226,11 +234,11 @@ export class BookingsService {
       throw new BadRequestException('Start time must be before end time');
     }
 
-    const booking = await this.findOne(organizationId, bookingId);
-
-    if (booking.userId !== userId) {
-      throw new ForbiddenException('Not authorized to reschedule this booking');
+    if (newStart < DateTime.now()) {
+      throw new BadRequestException('Cannot reschedule to a past time');
     }
+
+    const booking = await this.findOne(organizationId, bookingId, userId);
 
     if (booking.status !== BookingStatus.CONFIRMED && booking.status !== BookingStatus.PENDING) {
       throw new BadRequestException('Only active bookings can be rescheduled');

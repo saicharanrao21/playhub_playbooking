@@ -94,6 +94,10 @@ export class BookingsController {
     @Param('id') id: string,
     @Body() dto: RescheduleBookingDto,
   ) {
-    return this.bookingsService.reschedule(organizationId, user.userId, id, dto);
+    // If not privileged, enforce ownership check via userId
+    const isPrivileged = user.roles.includes('ADMIN') || user.roles.includes('BUSINESS_OWNER');
+    const userId = isPrivileged ? undefined : user.userId;
+
+    return this.bookingsService.reschedule(organizationId, id, dto, userId);
   }
 }
