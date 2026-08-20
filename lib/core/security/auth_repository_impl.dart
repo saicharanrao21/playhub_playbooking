@@ -1,6 +1,5 @@
 import 'dart:async';
 import '../models/auth_models.dart';
-import '../models/app_models.dart';
 import '../networking/api_client_interface.dart';
 import 'auth_interface.dart';
 import 'token_storage.dart';
@@ -34,6 +33,8 @@ class AuthRepositoryImpl implements IAuthRepository {
         }
       } catch (e) {
         AppLogger.error('Failed to restore session profile', e);
+        // On error (e.g. network), we keep it as null to force re-auth or stay in initializing
+        _identityController.add(null);
       }
     } else {
       AppLogger.info('No existing session found.');
@@ -56,6 +57,7 @@ class AuthRepositoryImpl implements IAuthRepository {
       final access = data['accessToken'];
       final refresh = data['refreshToken'];
 
+      // Temporarily save tokens to allow profile fetch
       await _tokenStorage.saveAccessToken(access);
       await _tokenStorage.saveRefreshToken(refresh);
 
@@ -101,15 +103,14 @@ class AuthRepositoryImpl implements IAuthRepository {
       final access = data['accessToken'];
       final refresh = data['refreshToken'];
 
-      final identity = UserIdentity(
-        id: 'u_new',
-        email: email,
-        name: fullName,
-        role: UserRole.customer,
-      );
+      await _tokenStorage.saveAccessToken(access);
+      await _tokenStorage.saveRefreshToken(refresh);
 
-      await _saveSession(access, refresh, identity);
-      return identity;
+      final identity = await _fetchProfile();
+      if (identity != null) {
+        await _saveSession(access, refresh, identity);
+        return identity;
+      }
     }
 
     AppLogger.warning('Registration failed for: $email');
@@ -148,7 +149,19 @@ class AuthRepositoryImpl implements IAuthRepository {
       final refresh = data['refreshToken'];
 
       if (_currentIdentity != null) {
-        await _saveSession(access, refresh, _currentIdentity!);
+        // Just refresh tokens, keep identity but maybe update organization if needed?
+        // Usually, we just update the tokens.
+        await _tokenStorage.saveAccessToken(access);
+        await _tokenStorage.saveRefreshToken(refresh);
+      } else {
+        // If identity was lost but tokens work, try to fetch profile
+        await _tokenStorage.saveAccessToken(access);
+        await _tokenStorage.saveRefreshToken(refresh);
+        final identity = await _fetchProfile();
+        if (identity != null) {
+           _currentIdentity = identity;
+           _identityController.add(_currentIdentity);
+        }
       }
       return _currentIdentity;
     }

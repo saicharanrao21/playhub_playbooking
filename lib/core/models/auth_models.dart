@@ -8,6 +8,7 @@ class UserIdentity {
   final UserRole role;
   final AccountStatus status;
   final String? organizationId;
+  final List<String> permissions;
 
   const UserIdentity({
     required this.id,
@@ -16,6 +17,7 @@ class UserIdentity {
     required this.role,
     this.status = AccountStatus.active,
     this.organizationId,
+    this.permissions = const [],
   });
 
   factory UserIdentity.fromUser(User user) {
@@ -29,16 +31,41 @@ class UserIdentity {
 
   factory UserIdentity.fromJson(Map<String, dynamic> json) {
     String? orgId;
+    UserRole resolvedRole = UserRole.customer;
+    final Set<String> resolvedPermissions = {};
+
     if (json['memberships'] != null && (json['memberships'] as List).isNotEmpty) {
-      orgId = json['memberships'][0]['organizationId'];
+      // For now, we take the first membership as the primary context
+      final membership = json['memberships'][0];
+      orgId = membership['organizationId'];
+      
+      final roles = membership['roles'] as List?;
+      if (roles != null) {
+        for (final role in roles) {
+          final roleName = role['name'] as String;
+          if (roleName == 'ADMIN' || roleName == 'PLATFORM_ADMIN') {
+            resolvedRole = UserRole.admin;
+          } else if (roleName == 'BUSINESS_OWNER' && resolvedRole != UserRole.admin) {
+            resolvedRole = UserRole.businessOwner;
+          }
+
+          final perms = role['permissions'] as List?;
+          if (perms != null) {
+            for (final p in perms) {
+              resolvedPermissions.add('${p['action']}:${p['resource']}');
+            }
+          }
+        }
+      }
     }
 
     return UserIdentity(
       id: json['id'],
       email: json['email'],
       name: json['fullName'] ?? '',
-      role: UserRole.customer,
+      role: resolvedRole,
       organizationId: orgId,
+      permissions: resolvedPermissions.toList(),
     );
   }
 }
