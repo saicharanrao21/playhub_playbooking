@@ -29,6 +29,6 @@ export interface RefundResult {
 export interface IPaymentProvider {
   createOrder(options: CreateOrderOptions): Promise<PaymentOrder>;
   verifySignature(payload: any, signature: string): boolean;
-  verifyCheckout?(data: any): Promise<boolean>; // Optional authoritative check
+  verifyCheckout?(data: any, expectedAmountMinorUnits: number): Promise<boolean>; // Optional authoritative check
   initiateRefund(options: RefundOptions): Promise<RefundResult>;
 }

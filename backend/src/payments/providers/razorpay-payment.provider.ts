@@ -63,7 +63,7 @@ export class RazorpayPaymentProvider implements IPaymentProvider {
     return expectedSignature === signature;
   }
 
-  async verifyCheckout(data: any): Promise<boolean> {
+  async verifyCheckout(data: any, expectedAmountMinorUnits: number): Promise<boolean> {
     const secret = this.configService.get<string>('RAZORPAY_KEY_SECRET');
     if (!secret) {
       this.logger.error('RAZORPAY_KEY_SECRET is not configured');
@@ -77,7 +77,18 @@ export class RazorpayPaymentProvider implements IPaymentProvider {
       .update(body)
       .digest('hex');
 
-    return expectedSignature === data.signature;
+    if (expectedSignature !== data.signature) {
+      return false;
+    }
+
+    // For Razorpay, we should also verify the amount by fetching the order
+    try {
+       const order = await this.razorpay.orders.fetch(data.providerOrderId);
+       return order.amount === expectedAmountMinorUnits;
+    } catch (error) {
+       this.logger.error('Razorpay order fetch failed', error.stack);
+       return false;
+    }
   }
 
   async initiateRefund(options: RefundOptions): Promise<RefundResult> {

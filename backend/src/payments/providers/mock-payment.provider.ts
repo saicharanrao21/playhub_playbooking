@@ -23,7 +23,8 @@ export class MockPaymentProvider implements IPaymentProvider {
     return signature.startsWith('valid_');
   }
 
-  async verifyCheckout(data: any): Promise<boolean> {
+  async verifyCheckout(data: any, expectedAmountMinorUnits: number): Promise<boolean> {
+     // For mock, we just check the signature pattern
      return data.signature.startsWith('valid_');
   }
 

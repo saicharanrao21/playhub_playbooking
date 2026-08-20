@@ -99,6 +99,7 @@ describe('PaymentsService', () => {
       id: 'p1',
       organizationId: 'org1',
       bookingId: 'b1',
+      amount: 100.50,
       status: PaymentStatus.INITIATED,
       booking: { userId: 'u1' }
     });
@@ -107,7 +108,7 @@ describe('PaymentsService', () => {
 
     await service.verifyPayment('org1', 'u1', dto);
 
-    expect(mockProvider.verifyCheckout).toHaveBeenCalledWith(dto);
+    expect(mockProvider.verifyCheckout).toHaveBeenCalledWith(dto, 10050);
   });
 
   it('should process webhook capture successfully', async () => {

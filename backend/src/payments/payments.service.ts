@@ -151,8 +151,9 @@ export class PaymentsService {
     const provider = this.providerFactory.getProvider(payment.provider);
 
     let isValid = false;
+    const amountInMinorUnits = Math.round(Number(payment.amount) * 100);
     if (provider.verifyCheckout) {
-      isValid = await provider.verifyCheckout(dto);
+      isValid = await provider.verifyCheckout(dto, amountInMinorUnits);
     } else {
       isValid = provider.verifySignature(dto, dto.signature);
     }
@@ -187,7 +188,7 @@ export class PaymentsService {
       const updatedBooking = await tx.booking.update({
         where: {
           id: payment.bookingId,
-          status: { in: [BookingStatus.PENDING] } // Only confirm if it was PENDING
+          status: { in: [BookingStatus.PENDING] }
         },
         data: {
           status: BookingStatus.CONFIRMED,

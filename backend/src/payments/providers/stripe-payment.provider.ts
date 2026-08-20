@@ -66,11 +66,11 @@ export class StripePaymentProvider implements IPaymentProvider {
     }
   }
 
-  async verifyCheckout(data: any): Promise<boolean> {
+  async verifyCheckout(data: any, expectedAmountMinorUnits: number): Promise<boolean> {
     try {
       const intent = await this.stripe.paymentIntents.retrieve(data.providerPaymentId);
-      // Authoritative check of status and metadata (receipt = bookingId)
-      return intent.status === 'succeeded';
+      // Authoritative check of status and amount
+      return intent.status === 'succeeded' && intent.amount === expectedAmountMinorUnits;
     } catch (error) {
       this.logger.error('Stripe PaymentIntent retrieval failed', error.stack);
       return false;
