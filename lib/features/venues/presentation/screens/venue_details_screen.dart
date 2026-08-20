@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:playhub_playbooking/core/providers/repository_providers.dart';
+import 'package:playhub_playbooking/core/security/auth_provider.dart';
+import 'package:playhub_playbooking/core/security/permissions.dart';
 import '../../domain/models/venue_models.dart' as domain;
 import '../../data/venue_repository.dart';
 import 'package:go_router/go_router.dart';
@@ -60,6 +62,13 @@ class VenueDetailsScreen extends ConsumerWidget {
               SliverAppBar(
                 expandedHeight: 300,
                 pinned: true,
+                actions: [
+                  if (ref.can(AppPermissions.venueUpdate))
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () {}, 
+                    ),
+                ],
                 flexibleSpace: FlexibleSpaceBar(
                   background: const Placeholder(), 
                 ),

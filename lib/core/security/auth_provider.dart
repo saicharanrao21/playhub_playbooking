@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'auth_interface.dart';
 import 'auth_state.dart';
 import 'token_storage.dart';
+import '../models/auth_models.dart';
+import '../models/app_models.dart';
 import '../../app/bootstrap/bootstrap.dart';
 
 final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
@@ -115,5 +117,39 @@ class ActiveOrganizationNotifier extends StateNotifier<String?> {
       state = orgId;
       await _tokenStorage.saveActiveOrgId(orgId);
     }
+  }
+}
+
+/// Provider for the permissions available in the current active organization.
+final activePermissionsProvider = Provider<List<String>>((ref) {
+  final authState = ref.watch(authStateProvider);
+  final activeOrgId = ref.watch(activeOrganizationProvider);
+
+  if (authState.identity == null || activeOrgId == null) {
+    return const [];
+  }
+
+  final membership = authState.identity!.memberships.firstWhere(
+    (m) => m.organizationId == activeOrgId,
+    orElse: () => const OrganizationMembership(
+      id: '',
+      organizationId: '',
+      organization: OrganizationInfo(id: '', name: '', slug: ''),
+      roles: [],
+      permissions: [],
+    ),
+  );
+
+  return membership.permissions;
+});
+
+/// Extension to easily check permissions from WidgetRef.
+extension AuthPermissionsX on WidgetRef {
+  bool can(String permission) {
+    return watch(activePermissionsProvider).contains(permission);
+  }
+
+  bool hasRole(UserRole role) {
+    return watch(authStateProvider).identity?.role == role;
   }
 }

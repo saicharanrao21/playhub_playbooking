@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/booking_provider.dart';
 import '../../domain/models/booking_models.dart';
+import '../../../../core/models/app_models.dart' hide Booking, BookingStatus;
+import '../../../../core/security/auth_provider.dart';
+import '../../../../core/security/permissions.dart';
 
 class BookingDetailsScreen extends ConsumerStatefulWidget {
   final String bookingId;
@@ -114,28 +117,31 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
             Text('End: ${booking.endTime.toLocal().toString().split('.')[0]}'),
             const SizedBox(height: 32),
             if (booking.status != BookingStatus.cancelled) ...[
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => context.push(
-                    '/booking/${booking.id}/reschedule',
-                    extra: {'facilityId': booking.facilityId},
+              if (ref.hasRole(UserRole.customer) || ref.can(AppPermissions.bookingUpdate))
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => context.push(
+                      '/booking/${booking.id}/reschedule',
+                      extra: {'facilityId': booking.facilityId},
+                    ),
+                    child: const Text('Reschedule Booking'),
                   ),
-                  child: const Text('Reschedule Booking'),
                 ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _cancelBooking,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
+              if (ref.hasRole(UserRole.customer) || ref.can(AppPermissions.bookingUpdate))
+                const SizedBox(height: 12),
+              if (ref.hasRole(UserRole.customer) || ref.can(AppPermissions.bookingDelete))
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _cancelBooking,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Cancel Booking'),
                   ),
-                  child: const Text('Cancel Booking'),
                 ),
-              ),
             ],
           ],
         ),

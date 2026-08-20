@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/security/auth_provider.dart';
+import '../../../../core/models/app_models.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -60,18 +61,20 @@ class ProfileScreen extends ConsumerWidget {
             () => context.push('/notifications'),
           ),
           const Divider(),
-          _buildMenuItem(
-            context,
-            Icons.business_center_outlined,
-            'Switch to Business Mode',
-            () => context.push('/business-dashboard'),
-          ),
-          _buildMenuItem(
-            context,
-            Icons.admin_panel_settings_outlined,
-            'Admin Dashboard',
-            () => context.push('/admin-dashboard'),
-          ),
+          if (ref.hasRole(UserRole.businessOwner) || ref.hasRole(UserRole.admin))
+            _buildMenuItem(
+              context,
+              Icons.business_center_outlined,
+              'Switch to Business Mode',
+              () => context.push('/business-dashboard'),
+            ),
+          if (ref.hasRole(UserRole.admin))
+            _buildMenuItem(
+              context,
+              Icons.admin_panel_settings_outlined,
+              'Admin Dashboard',
+              () => context.push('/admin-dashboard'),
+            ),
           const Divider(),
           _buildMenuItem(context, Icons.help_outline, 'Help & Support', () {}),
           _buildMenuItem(context, Icons.logout, 'Logout', () {

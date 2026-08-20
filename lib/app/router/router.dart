@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/security/auth_provider.dart';
+import '../../core/models/app_models.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/venues/presentation/screens/venue_details_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
@@ -43,6 +44,21 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (isAuthenticated && isLoggingIn) {
         return '/';
+      }
+
+      // Role-based route protection
+      final user = authState.identity;
+      if (user != null) {
+        if (state.matchedLocation.startsWith('/admin-dashboard') && 
+            user.role != UserRole.admin) {
+          return '/';
+        }
+        
+        if (state.matchedLocation.startsWith('/business-dashboard') && 
+            user.role != UserRole.businessOwner && 
+            user.role != UserRole.admin) {
+          return '/';
+        }
       }
 
       return null;

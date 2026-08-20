@@ -20,4 +20,8 @@ export const Permissions = {
   AVAILABILITY_BLOCK_CREATE: 'create:availability_block',
   AVAILABILITY_BLOCK_READ: 'read:availability_block',
   AVAILABILITY_BLOCK_DELETE: 'delete:availability_block',
+
+  BOOKING_READ: 'read:booking',
+  BOOKING_UPDATE: 'update:booking',
+  BOOKING_DELETE: 'delete:booking',
 };

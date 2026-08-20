@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:playhub_playbooking/core/providers/repository_providers.dart';
 import 'package:playhub_playbooking/core/models/app_models.dart';
+import 'package:playhub_playbooking/core/security/auth_provider.dart';
+import 'package:playhub_playbooking/core/security/permissions.dart';
 import 'package:go_router/go_router.dart';
 
 final venuesProvider = FutureProvider<List<Venue>>((ref) async {
@@ -189,6 +191,13 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
       ),
+      floatingActionButton: ref.can(AppPermissions.venueCreate)
+          ? FloatingActionButton.extended(
+              onPressed: () {}, 
+              icon: const Icon(Icons.add),
+              label: const Text('New Venue'),
+            )
+          : null,
     );
   }
 }
