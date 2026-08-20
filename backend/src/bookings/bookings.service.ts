@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { RescheduleBookingDto } from './dto/reschedule-booking.dto';
 import { AvailabilityService } from '../availability/availability.service';
-import { BookingStatus } from '@prisma/client';
+import { BookingStatus, VenueStatus, FacilityStatus } from '@prisma/client';
 import { DateTime } from 'luxon';
 import { TimeInterval } from '../common/utils/time-interval.util';
 import { Events } from '../common/constants/events';
@@ -51,11 +51,13 @@ export class BookingsService {
       throw new BadRequestException('Cannot create a booking in the past');
     }
 
-    // 1. Verify facility existence and ownership
+    // 1. Verify facility existence, status and ownership
     const facility = await this.prisma.facility.findFirst({
       where: {
         id: facilityId,
+        status: FacilityStatus.ACTIVE,
         venue: {
+          status: VenueStatus.ACTIVE,
           business: {
             organizationId,
           },
@@ -239,6 +241,11 @@ export class BookingsService {
     }
 
     const booking = await this.findOne(organizationId, bookingId, userId);
+
+    if (booking.facility.status !== FacilityStatus.ACTIVE ||
+        booking.facility.venue.status !== VenueStatus.ACTIVE) {
+      throw new BadRequestException('Facility or Venue is no longer active');
+    }
 
     if (booking.status !== BookingStatus.CONFIRMED && booking.status !== BookingStatus.PENDING) {
       throw new BadRequestException('Only active bookings can be rescheduled');

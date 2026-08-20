@@ -4,7 +4,7 @@ import { BookingsService } from './bookings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AvailabilityService } from '../availability/availability.service';
 import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
-import { BookingStatus } from '@prisma/client';
+import { BookingStatus, VenueStatus, FacilityStatus } from '@prisma/client';
 import { Events } from '../common/constants/events';
 import { DateTime } from 'luxon';
 
@@ -45,7 +45,7 @@ describe('BookingsService (Concurrency & Logic)', () => {
   const futureEnd = DateTime.now().plus({ days: 1, hours: 1 }).toISO();
 
   it('should throw ConflictException if overlapping booking exists', async () => {
-    mockPrisma.facility.findFirst.mockResolvedValue({ id: 'f1', venue: { timezone: 'UTC' } });
+    mockPrisma.facility.findFirst.mockResolvedValue({ id: 'f1', status: FacilityStatus.ACTIVE, venue: { status: VenueStatus.ACTIVE, timezone: 'UTC' } });
     mockPrisma.booking.findFirst.mockResolvedValue({ id: 'existing' });
 
     const dto = { startTime: futureStart, endTime: futureEnd };
@@ -59,7 +59,11 @@ describe('BookingsService (Concurrency & Logic)', () => {
   it('should create booking as PENDING if no overlaps and available', async () => {
     const dto = { startTime: futureStart, endTime: futureEnd };
 
-    mockPrisma.facility.findFirst.mockResolvedValue({ id: 'f1', venue: { business: { organizationId: 'org1' }, timezone: 'UTC' } });
+    mockPrisma.facility.findFirst.mockResolvedValue({
+      id: 'f1',
+      status: FacilityStatus.ACTIVE,
+      venue: { status: VenueStatus.ACTIVE, business: { organizationId: 'org1' }, timezone: 'UTC' }
+    });
     mockPrisma.booking.findFirst.mockResolvedValue(null);
 
     mockAvailability.getAvailability.mockResolvedValue({
@@ -85,10 +89,22 @@ describe('BookingsService (Concurrency & Logic)', () => {
       .rejects.toThrow(BadRequestException);
   });
 
+  it('should throw NotFoundException if facility is INACTIVE', async () => {
+    const dto = { startTime: futureStart, endTime: futureEnd };
+    mockPrisma.facility.findFirst.mockResolvedValue(null);
+
+    await expect(service.create('org1', 'u1', 'f1', dto))
+      .rejects.toThrow(NotFoundException);
+  });
+
   it('should handle 10 concurrent requests and allow only one', async () => {
     const dto = { startTime: futureStart, endTime: futureEnd };
 
-    mockPrisma.facility.findFirst.mockResolvedValue({ id: 'f1', venue: { timezone: 'UTC' } });
+    mockPrisma.facility.findFirst.mockResolvedValue({
+      id: 'f1',
+      status: FacilityStatus.ACTIVE,
+      venue: { status: VenueStatus.ACTIVE, timezone: 'UTC' }
+    });
     mockPrisma.booking.findFirst.mockResolvedValue(null);
     mockAvailability.getAvailability.mockResolvedValue({
       availableIntervals: [{ contains: () => true }]
@@ -118,7 +134,18 @@ describe('BookingsService (Concurrency & Logic)', () => {
   });
 
   it('should cancel an eligible booking for owner', async () => {
-    const mockBooking = { id: 'b1', status: BookingStatus.CONFIRMED, organizationId: 'org1', userId: 'u1', facility: { name: 'F1' }, startTime: new Date() };
+    const mockBooking = {
+      id: 'b1',
+      status: BookingStatus.CONFIRMED,
+      organizationId: 'org1',
+      userId: 'u1',
+      facility: {
+        name: 'F1',
+        status: FacilityStatus.ACTIVE,
+        venue: { status: VenueStatus.ACTIVE }
+      },
+      startTime: new Date()
+    };
     mockPrisma.booking.findFirst.mockResolvedValue(mockBooking);
     mockPrisma.booking.update.mockResolvedValue({ ...mockBooking, status: BookingStatus.CANCELLED });
 
@@ -130,7 +157,12 @@ describe('BookingsService (Concurrency & Logic)', () => {
   });
 
   it('should throw BadRequestException for invalid status transition in cancel', async () => {
-    mockPrisma.booking.findFirst.mockResolvedValue({ id: 'b1', status: BookingStatus.COMPLETED, organizationId: 'org1' });
+    mockPrisma.booking.findFirst.mockResolvedValue({
+      id: 'b1',
+      status: BookingStatus.COMPLETED,
+      organizationId: 'org1',
+      facility: { status: FacilityStatus.ACTIVE, venue: { status: VenueStatus.ACTIVE } }
+    });
     await expect(service.cancel('org1', 'b1', undefined, 'u1')).rejects.toThrow(BadRequestException);
   });
 
@@ -140,7 +172,11 @@ describe('BookingsService (Concurrency & Logic)', () => {
       userId: 'u1',
       status: BookingStatus.CONFIRMED,
       facilityId: 'f1',
-      facility: { venue: { timezone: 'UTC' }, name: 'F1' },
+      facility: {
+        status: FacilityStatus.ACTIVE,
+        venue: { status: VenueStatus.ACTIVE, timezone: 'UTC' },
+        name: 'F1'
+      },
       startTime: new Date(futureStart!),
       endTime: new Date(futureEnd!),
     };
@@ -168,6 +204,27 @@ describe('BookingsService (Concurrency & Logic)', () => {
 
   it('should throw BadRequestException when rescheduling to the past', async () => {
     const dto = { newStartTime: '2020-01-01T10:00:00Z', newEndTime: '2020-01-01T11:00:00Z' };
+    await expect(service.reschedule('org1', 'b1', dto, 'u1')).rejects.toThrow(BadRequestException);
+  });
+
+  it('should throw BadRequestException if facility or venue is INACTIVE during reschedule', async () => {
+    const mockBooking = {
+      id: 'b1',
+      userId: 'u1',
+      status: BookingStatus.CONFIRMED,
+      facilityId: 'f1',
+      facility: {
+        status: FacilityStatus.INACTIVE,
+        venue: { status: VenueStatus.ACTIVE, timezone: 'UTC' },
+        name: 'F1'
+      },
+      startTime: new Date(futureStart!),
+      endTime: new Date(futureEnd!),
+    };
+
+    mockPrisma.booking.findFirst.mockResolvedValue(mockBooking);
+
+    const dto = { newStartTime: futureStart!, newEndTime: futureEnd! };
     await expect(service.reschedule('org1', 'b1', dto, 'u1')).rejects.toThrow(BadRequestException);
   });
 });
