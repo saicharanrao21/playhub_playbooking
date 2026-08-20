@@ -26,6 +26,9 @@ export class PaymentsService {
     @Inject(PAYMENT_PROVIDER) private defaultProvider: IPaymentProvider,
   ) {}
 
+  /**
+   * Validates if a transition from current status to next status is allowed.
+   */
   private canTransition(current: PaymentStatus, next: PaymentStatus): boolean {
     if (current === next) return true;
     if (this.TERMINAL_STATES.includes(current) && next !== PaymentStatus.REFUNDED) {
@@ -64,8 +67,12 @@ export class PaymentsService {
       throw new NotFoundException('Booking not found');
     }
 
-    if (booking.status === BookingStatus.CANCELLED) {
-      throw new BadRequestException('Cannot pay for a cancelled booking');
+    if (booking.userId !== userId) {
+      throw new ForbiddenException('Not authorized to create payment for this booking');
+    }
+
+    if (booking.status === BookingStatus.CANCELLED || booking.status === BookingStatus.COMPLETED) {
+      throw new BadRequestException(`Cannot pay for a booking in ${booking.status} status`);
     }
 
     if (idempotencyKey) {
@@ -124,10 +131,12 @@ export class PaymentsService {
     });
 
     if (!payment || payment.organizationId !== organizationId) {
+      this.logger.warn(`Verify failed: Payment record not found for Order ${dto.providerOrderId}`);
       throw new NotFoundException('Payment record not found');
     }
 
     if (payment.booking.userId !== userId) {
+      this.logger.warn(`Verify failed: User ${userId} tried to verify payment owned by ${payment.booking.userId}`);
       throw new ForbiddenException('Not authorized to verify this payment');
     }
 
@@ -140,9 +149,17 @@ export class PaymentsService {
     }
 
     const provider = this.providerFactory.getProvider(payment.provider);
-    const isValid = provider.verifySignature(dto, dto.signature);
+
+    let isValid = false;
+    if (provider.verifyCheckout) {
+      isValid = await provider.verifyCheckout(dto);
+    } else {
+      isValid = provider.verifySignature(dto, dto.signature);
+    }
+
     if (!isValid) {
-      throw new BadRequestException('Invalid payment signature');
+      this.logger.error(`Invalid payment verification for Order ${dto.providerOrderId}`);
+      throw new BadRequestException('Invalid payment signature or verification failed');
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -166,16 +183,17 @@ export class PaymentsService {
         }
       });
 
+      // Update Booking record only if not in a terminal/final state
       const updatedBooking = await tx.booking.update({
         where: {
           id: payment.bookingId,
-          status: { not: BookingStatus.CANCELLED }
+          status: { in: [BookingStatus.PENDING] } // Only confirm if it was PENDING
         },
         data: {
           status: BookingStatus.CONFIRMED,
         }
       }).catch(() => {
-        this.logger.warn(`Attempted to confirm a cancelled booking: ${payment.bookingId}`);
+        this.logger.warn(`Authoritative confirmation ignored: Booking ${payment.bookingId} is in status ${payment.booking.status}`);
         return null;
       });
 
@@ -268,7 +286,7 @@ export class PaymentsService {
         const updatedBooking = await tx.booking.update({
           where: {
             id: payment.bookingId,
-            status: { not: BookingStatus.CANCELLED }
+            status: { in: [BookingStatus.PENDING] }
           },
           data: { status: BookingStatus.CONFIRMED }
         }).catch(() => null);

@@ -48,18 +48,36 @@ export class RazorpayPaymentProvider implements IPaymentProvider {
   }
 
   verifySignature(payload: any, signature: string): boolean {
-    const secret = this.configService.get<string>('RAZORPAY_WEBHOOK_SECRET');
-    if (!secret) {
+    const webhookSecret = this.configService.get<string>('RAZORPAY_WEBHOOK_SECRET');
+
+    if (!webhookSecret) {
       this.logger.error('RAZORPAY_WEBHOOK_SECRET is not configured');
       return false;
     }
 
     const expectedSignature = crypto
-      .createHmac('sha256', secret)
+      .createHmac('sha256', webhookSecret)
       .update(JSON.stringify(payload))
       .digest('hex');
 
     return expectedSignature === signature;
+  }
+
+  async verifyCheckout(data: any): Promise<boolean> {
+    const secret = this.configService.get<string>('RAZORPAY_KEY_SECRET');
+    if (!secret) {
+      this.logger.error('RAZORPAY_KEY_SECRET is not configured');
+      return false;
+    }
+
+    // data contains providerOrderId, providerPaymentId, signature
+    const body = data.providerOrderId + '|' + data.providerPaymentId;
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(body)
+      .digest('hex');
+
+    return expectedSignature === data.signature;
   }
 
   async initiateRefund(options: RefundOptions): Promise<RefundResult> {

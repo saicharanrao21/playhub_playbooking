@@ -22,6 +22,7 @@ describe('PaymentsService', () => {
   const mockProvider = {
     createOrder: jest.fn(),
     verifySignature: jest.fn(),
+    verifyCheckout: jest.fn(),
     initiateRefund: jest.fn(),
   };
 
@@ -52,7 +53,7 @@ describe('PaymentsService', () => {
   });
 
   it('should throw BadRequestException for cancelled bookings', async () => {
-    mockPrisma.booking.findFirst.mockResolvedValue({ id: 'b1', status: BookingStatus.CANCELLED, payments: [] });
+    mockPrisma.booking.findFirst.mockResolvedValue({ id: 'b1', userId: 'u1', status: BookingStatus.CANCELLED, payments: [] });
     await expect(service.createOrder('org1', 'u1', { bookingId: 'b1' }))
       .rejects.toThrow(BadRequestException);
   });
@@ -60,6 +61,7 @@ describe('PaymentsService', () => {
   it('should throw ConflictException if already paid', async () => {
     mockPrisma.booking.findFirst.mockResolvedValue({
       id: 'b1',
+      userId: 'u1',
       status: BookingStatus.PENDING,
       payments: [{ status: PaymentStatus.CAPTURED }]
     });
@@ -70,6 +72,7 @@ describe('PaymentsService', () => {
   it('should create order with server-calculated amount', async () => {
     mockPrisma.booking.findFirst.mockResolvedValue({
       id: 'b1',
+      userId: 'u1',
       status: BookingStatus.PENDING,
       totalPrice: 100.50,
       currency: 'INR',
@@ -137,7 +140,7 @@ describe('PaymentsService', () => {
 
   it('should be idempotent in createOrder if idempotencyKey is provided', async () => {
     const existingPayment = { id: 'p1', bookingId: 'b1', organizationId: 'org1' };
-    mockPrisma.booking.findFirst.mockResolvedValue({ id: 'b1', organizationId: 'org1', payments: [] });
+    mockPrisma.booking.findFirst.mockResolvedValue({ id: 'b1', userId: 'u1', organizationId: 'org1', payments: [] });
     mockPrisma.payment.findUnique.mockResolvedValue(existingPayment);
 
     const result = await service.createOrder('org1', 'u1', { bookingId: 'b1' }, 'key_123');
