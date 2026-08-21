@@ -121,10 +121,13 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () => context.push(
-                      '/booking/${booking.id}/reschedule',
-                      extra: {'facilityId': booking.facilityId},
-                    ),
+                    onPressed: () async {
+                      await context.push(
+                        '/booking/${booking.id}/reschedule',
+                        extra: {'facilityId': booking.facilityId},
+                      );
+                      _loadBooking();
+                    },
                     child: const Text('Reschedule Booking'),
                   ),
                 ),

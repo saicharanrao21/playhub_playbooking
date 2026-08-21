@@ -167,7 +167,13 @@ export class BookingsService {
       },
       include: {
         facility: {
-          include: { venue: true }
+          include: {
+            venue: true,
+            pricingRules: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          }
         },
         user: {
           select: {
@@ -285,7 +291,23 @@ export class BookingsService {
     }
 
     if (booking.status !== BookingStatus.CONFIRMED && booking.status !== BookingStatus.PENDING) {
-      throw new BadRequestException('Only active bookings can be rescheduled');
+      throw new BadRequestException(`Only active bookings can be rescheduled. Current status: ${booking.status}`);
+    }
+
+    // Calculate new total price
+    const durationInHours = newEnd.diff(newStart, 'hours').hours;
+    const pricingRule = booking.facility.pricingRules[0];
+    if (!pricingRule) {
+       throw new BadRequestException('No pricing rule found for this facility');
+    }
+    const newTotalPrice = Number(pricingRule.basePrice) * durationInHours;
+
+    // Integrity: If booking is already paid (CAPTURED payments exist),
+    // we only allow rescheduling if the price does not increase for now,
+    // to avoid complex partial payment scenarios in this phase.
+    const hasCapturedPayments = booking.payments.some(p => p.status === PaymentStatus.CAPTURED);
+    if (hasCapturedPayments && newTotalPrice > Number(booking.totalPrice)) {
+       throw new BadRequestException('Cannot reschedule to a more expensive slot after payment. Please cancel and re-book.');
     }
 
     // Optimization: return immediately if new slot is same as current
@@ -328,10 +350,14 @@ export class BookingsService {
 
       // 3. Update Booking
       const updatedBooking = await tx.booking.update({
-        where: { id: bookingId },
+        where: {
+          id: bookingId,
+          status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] } // Atomic re-check
+        },
         data: {
           startTime: newStart.toJSDate(),
           endTime: newEnd.toJSDate(),
+          totalPrice: newTotalPrice,
         },
         include: { facility: true }
       });

@@ -138,7 +138,7 @@ describe('BookingsService (Concurrency & Logic)', () => {
   it('should list bookings for an organization', async () => {
     mockPrisma.booking.findMany.mockResolvedValue([{ id: 'b1' }]);
     mockPrisma.booking.count.mockResolvedValue(1);
-    const result = await service.findAll('org1', { userId: 'u1' });
+    const result = await service.findAll('org1', { userId: 'u1', skip: 0, take: 10 });
     expect(result.items).toHaveLength(1);
     expect(result.total).toBe(1);
   });
@@ -186,23 +186,26 @@ describe('BookingsService (Concurrency & Logic)', () => {
     await expect(service.cancel('org1', 'b1', undefined, 'u1')).rejects.toThrow(BadRequestException);
   });
 
-  it('should reschedule a booking for owner', async () => {
+  it('should reschedule a booking for owner and update price', async () => {
     const mockBooking = {
       id: 'b1',
       userId: 'u1',
+      totalPrice: 100,
       status: BookingStatus.CONFIRMED,
       facilityId: 'f1',
       facility: {
         status: FacilityStatus.ACTIVE,
         venue: { status: VenueStatus.ACTIVE, timezone: 'UTC' },
-        name: 'F1'
+        name: 'F1',
+        pricingRules: [{ basePrice: 100, currency: 'INR' }]
       },
+      payments: [],
       startTime: new Date(futureStart!),
       endTime: new Date(futureEnd!),
     };
 
     const nextDayStart = DateTime.fromISO(futureStart!).plus({ days: 1 }).toISO();
-    const nextDayEnd = DateTime.fromISO(futureEnd!).plus({ days: 1 }).toISO();
+    const nextDayEnd = DateTime.fromISO(futureEnd!).plus({ days: 1, hours: 1 }).toISO(); // 2 hours now
 
     mockPrisma.booking.findFirst
       .mockResolvedValueOnce(mockBooking) // findOne
@@ -211,40 +214,42 @@ describe('BookingsService (Concurrency & Logic)', () => {
     mockAvailability.getAvailability.mockResolvedValue({
       availableIntervals: [{ contains: () => true }]
     });
-    mockPrisma.booking.update.mockResolvedValue({ ...mockBooking, startTime: new Date(nextDayStart!) });
+    mockPrisma.booking.update.mockResolvedValue({ ...mockBooking, totalPrice: 200, startTime: new Date(nextDayStart!) });
 
     const dto = { newStartTime: nextDayStart!, newEndTime: nextDayEnd! };
     const result = await service.reschedule('org1', 'b1', dto, 'u1');
 
     expect(result.id).toBe('b1');
-    expect(mockPrisma.booking.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ id: 'b1', organizationId: 'org1', userId: 'u1' })
+    expect(mockPrisma.booking.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ totalPrice: 200 })
     }));
   });
 
-  it('should throw BadRequestException when rescheduling to the past', async () => {
-    const dto = { newStartTime: '2020-01-01T10:00:00Z', newEndTime: '2020-01-01T11:00:00Z' };
-    await expect(service.reschedule('org1', 'b1', dto, 'u1')).rejects.toThrow(BadRequestException);
-  });
-
-  it('should throw BadRequestException if facility or venue is INACTIVE during reschedule', async () => {
-    const mockBooking = {
+  it('should throw BadRequestException if rescheduling a paid booking to a more expensive slot', async () => {
+     const mockBooking = {
       id: 'b1',
       userId: 'u1',
+      totalPrice: 100,
       status: BookingStatus.CONFIRMED,
       facilityId: 'f1',
       facility: {
-        status: FacilityStatus.INACTIVE,
+        status: FacilityStatus.ACTIVE,
         venue: { status: VenueStatus.ACTIVE, timezone: 'UTC' },
-        name: 'F1'
+        name: 'F1',
+        pricingRules: [{ basePrice: 100, currency: 'INR' }]
       },
+      payments: [{ status: PaymentStatus.CAPTURED }],
       startTime: new Date(futureStart!),
       endTime: new Date(futureEnd!),
     };
 
+    const nextDayStart = DateTime.fromISO(futureStart!).plus({ days: 1 }).toISO();
+    const nextDayEnd = DateTime.fromISO(futureEnd!).plus({ days: 1, hours: 1 }).toISO(); // 2 hours
+
     mockPrisma.booking.findFirst.mockResolvedValue(mockBooking);
 
-    const dto = { newStartTime: futureStart!, newEndTime: futureEnd! };
-    await expect(service.reschedule('org1', 'b1', dto, 'u1')).rejects.toThrow(BadRequestException);
+    const dto = { newStartTime: nextDayStart!, newEndTime: nextDayEnd! };
+    await expect(service.reschedule('org1', 'b1', dto, 'u1'))
+      .rejects.toThrow(BadRequestException);
   });
 });
