@@ -27,4 +27,6 @@ export const Permissions = {
 
   PAYMENT_READ: 'read:payment',
   PAYMENT_UPDATE: 'update:payment',
+
+  ORGANIZATION_SETTINGS_READ: 'read:organization_settings',
 };

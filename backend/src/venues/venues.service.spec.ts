@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { VenuesService } from './venues.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { ForbiddenException, ConflictException } from '@nestjs/common';
+import { ForbiddenException, ConflictException, NotFoundException } from '@nestjs/common';
 
 describe('VenuesService (Domain Isolation)', () => {
   let service: VenuesService;
@@ -9,7 +9,7 @@ describe('VenuesService (Domain Isolation)', () => {
 
   const mockPrisma = {
     business: { findFirst: jest.fn() },
-    venue: { findUnique: jest.fn(), create: jest.fn(), findFirst: jest.fn() },
+    venue: { findUnique: jest.fn(), create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), count: jest.fn() },
   };
 
   beforeEach(async () => {
@@ -50,5 +50,33 @@ describe('VenuesService (Domain Isolation)', () => {
     expect(mockPrisma.venue.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ businessId: 'biz1' })
     });
+  });
+
+  it('should find all venues for an organization', async () => {
+    mockPrisma.venue.findMany.mockResolvedValue([{ id: 'v1' }]);
+    mockPrisma.venue.count.mockResolvedValue(1);
+
+    const result = await service.findAll('org1', { skip: 0, take: 10 });
+    expect(result.items).toHaveLength(1);
+    expect(result.total).toBe(1);
+    expect(mockPrisma.venue.findMany).toHaveBeenCalledWith(expect.objectContaining({
+       where: { business: { organizationId: 'org1' } }
+    }));
+  });
+
+  it('should throw NotFoundException if venue not found in organization', async () => {
+     mockPrisma.venue.findFirst.mockResolvedValue(null);
+     await expect(service.findOne('org1', 'v2')).rejects.toThrow(NotFoundException);
+  });
+
+  it('should find a venue if it belongs to the organization', async () => {
+     const mockVenue = { id: 'v1', businessId: 'biz1' };
+     mockPrisma.venue.findFirst.mockResolvedValue(mockVenue);
+
+     const result = await service.findOne('org1', 'v1');
+     expect(result).toEqual(mockVenue);
+     expect(mockPrisma.venue.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: 'v1', business: { organizationId: 'org1' } }
+     }));
   });
 });
