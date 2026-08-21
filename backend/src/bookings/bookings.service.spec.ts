@@ -4,7 +4,7 @@ import { BookingsService } from './bookings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AvailabilityService } from '../availability/availability.service';
 import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
-import { BookingStatus, VenueStatus, FacilityStatus } from '@prisma/client';
+import { BookingStatus, VenueStatus, FacilityStatus, PaymentStatus } from '@prisma/client';
 import { Events } from '../common/constants/events';
 import { DateTime } from 'luxon';
 
@@ -163,6 +163,7 @@ describe('BookingsService (Concurrency & Logic)', () => {
         status: FacilityStatus.ACTIVE,
         venue: { status: VenueStatus.ACTIVE }
       },
+      payments: [],
       startTime: new Date()
     };
     mockPrisma.booking.findFirst.mockResolvedValue(mockBooking);
@@ -171,7 +172,7 @@ describe('BookingsService (Concurrency & Logic)', () => {
     const result = await service.cancel('org1', 'b1', 'Change of plans', 'u1');
     expect(result.status).toBe(BookingStatus.CANCELLED);
     expect(mockPrisma.booking.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'b1' }
+      where: { id: 'b1', status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] } }
     }));
   });
 

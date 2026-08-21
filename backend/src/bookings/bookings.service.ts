@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { RescheduleBookingDto } from './dto/reschedule-booking.dto';
 import { AvailabilityService } from '../availability/availability.service';
-import { BookingStatus, VenueStatus, FacilityStatus } from '@prisma/client';
+import { BookingStatus, VenueStatus, FacilityStatus, PaymentStatus } from '@prisma/client';
 import { DateTime } from 'luxon';
 import { TimeInterval } from '../common/utils/time-interval.util';
 import { Events } from '../common/constants/events';
@@ -176,7 +176,8 @@ export class BookingsService {
             fullName: true,
             phoneNumber: true,
           }
-        }
+        },
+        payments: true,
       }
     });
 
@@ -217,26 +218,34 @@ export class BookingsService {
   async cancel(organizationId: string, id: string, reason?: string, userId?: string) {
     const booking = await this.findOne(organizationId, id, userId);
 
+    if (booking.status === BookingStatus.CANCELLED) {
+      return booking;
+    }
+
     this.validateStatusTransition(booking.status, BookingStatus.CANCELLED);
 
     return this.prisma.$transaction(async (tx) => {
+      // Atomic re-check of status within transaction
       const updatedBooking = await tx.booking.update({
-        where: { id },
+        where: {
+          id,
+          status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] }
+        },
         data: {
           status: BookingStatus.CANCELLED,
           cancelledAt: new Date(),
           cancelReason: reason,
         },
-        include: { facility: true }
+        include: { facility: true, payments: true }
       });
 
       // Update associated non-captured payments to CANCELLED
       await tx.payment.updateMany({
         where: {
           bookingId: id,
-          status: { not: 'CAPTURED' }
+          status: { notIn: [PaymentStatus.CAPTURED, PaymentStatus.REFUNDED] }
         },
-        data: { status: 'CANCELLED' }
+        data: { status: PaymentStatus.CANCELLED }
       });
 
       this.eventEmitter.emit(Events.BOOKING_CANCELLED, {
@@ -245,10 +254,11 @@ export class BookingsService {
         userId: updatedBooking.userId,
         facilityName: updatedBooking.facility.name,
         startTime: updatedBooking.startTime,
+        hasCapturedPayments: updatedBooking.payments.some(p => p.status === PaymentStatus.CAPTURED)
       });
 
       return updatedBooking;
-    });
+    }, { isolationLevel: 'Serializable' });
   }
 
   async reschedule(organizationId: string, bookingId: string, dto: RescheduleBookingDto, userId?: string) {

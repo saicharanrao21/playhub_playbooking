@@ -325,12 +325,48 @@ export class PaymentsService {
       }, { isolationLevel: 'Serializable' });
     }
 
+    // Handle Refund webhooks
+    if (eventType === 'refund.processed' || eventType === 'charge.refunded') {
+      const payment = await this.prisma.payment.findFirst({
+        where: {
+          OR: [
+            { providerPaymentId: payload.payment_id || payload.data?.object?.payment_intent },
+            { providerOrderId: providerOrderId }
+          ]
+        }
+      });
+
+      if (!payment) return { status: 'ignored', reason: 'Payment for refund not found' };
+      if (payment.status === PaymentStatus.REFUNDED) return { status: 'noop', reason: 'Already refunded' };
+
+      return this.prisma.$transaction(async (tx) => {
+         try {
+           const updatedPayment = await tx.payment.update({
+             where: { id: payment.id, status: { not: PaymentStatus.REFUNDED } },
+             data: { status: PaymentStatus.REFUNDED }
+           });
+
+           this.eventEmitter.emit(Events.PAYMENT_REFUNDED, {
+             paymentId: updatedPayment.id,
+             bookingId: updatedPayment.bookingId,
+             organizationId: updatedPayment.organizationId,
+             amount: updatedPayment.amount,
+           });
+
+           return { status: 'success' };
+         } catch (e) {
+           return { status: 'noop', reason: 'Already updated or conflicting update' };
+         }
+      }, { isolationLevel: 'Serializable' });
+    }
+
     return { received: true };
   }
 
   async initiateRefund(organizationId: string, paymentId: string, reason?: string) {
     const payment = await this.prisma.payment.findFirst({
       where: { id: paymentId, organizationId },
+      include: { booking: true }
     });
 
     if (!payment) {
@@ -338,31 +374,48 @@ export class PaymentsService {
     }
 
     if (payment.status !== PaymentStatus.CAPTURED) {
-      throw new BadRequestException('Only captured payments can be refunded');
+      throw new BadRequestException(`Only captured payments can be refunded. Current status: ${payment.status}`);
     }
 
     const provider = this.providerFactory.getProvider(payment.provider);
 
-    try {
-      const refundResult = await provider.initiateRefund({
-        paymentId: payment.providerPaymentId || payment.providerOrderId,
-        notes: { reason: reason || 'User requested' }
-      });
+    return this.prisma.$transaction(async (tx) => {
+      const latest = await tx.payment.findUnique({ where: { id: paymentId } });
+      if (latest.status === PaymentStatus.REFUNDED) {
+         return latest;
+      }
 
-      return this.prisma.payment.update({
-        where: { id: paymentId },
-        data: {
-          status: PaymentStatus.REFUNDED,
-          metadata: {
-            ...(payment.metadata as any || {}),
-            refundId: refundResult.id,
-            refundStatus: refundResult.status,
+      try {
+        const refundResult = await provider.initiateRefund({
+          paymentId: payment.providerPaymentId || payment.providerOrderId,
+          amount: Number(payment.amount),
+          notes: { reason: reason || 'User requested', bookingId: payment.bookingId }
+        });
+
+        const updatedPayment = await tx.payment.update({
+          where: { id: paymentId, status: { not: PaymentStatus.REFUNDED } },
+          data: {
+            status: PaymentStatus.REFUNDED,
+            metadata: {
+              ...(payment.metadata as any || {}),
+              refundId: refundResult.id,
+              refundStatus: refundResult.status,
+            }
           }
-        }
-      });
-    } catch (error) {
-      this.logger.error(`Refund failed for payment ${paymentId}`, error.stack);
-      throw new BadRequestException('Failed to initiate refund with provider');
-    }
+        });
+
+        this.eventEmitter.emit(Events.PAYMENT_REFUNDED, {
+          paymentId: updatedPayment.id,
+          bookingId: updatedPayment.bookingId,
+          organizationId: updatedPayment.organizationId,
+          amount: updatedPayment.amount,
+        });
+
+        return updatedPayment;
+      } catch (error) {
+        this.logger.error(`Refund failed for payment ${paymentId}`, error.stack);
+        throw new BadRequestException('Failed to initiate refund with provider');
+      }
+    }, { isolationLevel: 'Serializable' });
   }
 }

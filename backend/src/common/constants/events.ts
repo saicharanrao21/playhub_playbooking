@@ -5,4 +5,5 @@ export const Events = {
   BOOKING_RESCHEDULED: 'booking.rescheduled',
   PAYMENT_CAPTURED: 'payment.captured',
   PAYMENT_FAILED: 'payment.failed',
+  PAYMENT_REFUNDED: 'payment.refunded',
 };
