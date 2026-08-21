@@ -10,9 +10,10 @@ class NotificationRepository {
   String get _baseUrl => '/organizations/$_organizationId/notifications';
 
   Future<List<AppNotification>> getNotifications() async {
-    final response = await _apiClient.get<List>(_baseUrl);
+    final response = await _apiClient.get<Map<String, dynamic>>(_baseUrl);
     if (response.isSuccess) {
-      return response.data!.map((n) => AppNotification.fromJson(n)).toList();
+      final items = response.data!['items'] as List;
+      return items.map((n) => AppNotification.fromJson(n)).toList();
     }
     return [];
   }

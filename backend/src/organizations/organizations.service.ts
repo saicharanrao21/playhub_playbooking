@@ -5,8 +5,16 @@ import { PrismaService } from '../prisma/prisma.service';
 export class OrganizationsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll() {
-    return this.prisma.organization.findMany();
+  async findAll(filters: { skip?: number; take?: number }) {
+    const [items, total] = await Promise.all([
+      this.prisma.organization.findMany({
+        skip: filters.skip,
+        take: filters.take,
+      }),
+      this.prisma.organization.count(),
+    ]);
+
+    return { items, total };
   }
 
   async getMembership(userId: string, organizationId: string) {

@@ -14,7 +14,7 @@ describe('BookingsService (Concurrency & Logic)', () => {
 
   const mockPrisma = {
     facility: { findFirst: jest.fn() },
-    booking: { findFirst: jest.fn(), create: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn() },
+    booking: { findFirst: jest.fn(), create: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn(), count: jest.fn() },
     payment: { updateMany: jest.fn() },
     $transaction: jest.fn((cb) => cb(mockPrisma)),
   };
@@ -133,6 +133,14 @@ describe('BookingsService (Concurrency & Logic)', () => {
 
     expect(results.filter(r => r.status === 'fulfilled').length).toBe(1);
     expect(results.filter(r => r.status === 'rejected').length).toBe(9);
+  });
+
+  it('should list bookings for an organization', async () => {
+    mockPrisma.booking.findMany.mockResolvedValue([{ id: 'b1' }]);
+    mockPrisma.booking.count.mockResolvedValue(1);
+    const result = await service.findAll('org1', { userId: 'u1' });
+    expect(result.items).toHaveLength(1);
+    expect(result.total).toBe(1);
   });
 
   it('should find one booking for owner', async () => {

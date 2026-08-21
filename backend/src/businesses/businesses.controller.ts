@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Patch, Body, UseGuards, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, UseGuards, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { BusinessesService } from './businesses.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import { UpdateBusinessDto } from './dto/update-business.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
@@ -31,8 +32,14 @@ export class BusinessesController {
   @Get()
   @RequirePermission(Permissions.BUSINESS_READ)
   @ApiOperation({ summary: 'List all businesses in the organization' })
-  async findAll(@OrganizationContext() organizationId: string) {
-    return this.businessesService.findAll(organizationId);
+  async findAll(
+    @OrganizationContext() organizationId: string,
+    @Query() pagination: PaginationDto,
+  ) {
+    return this.businessesService.findAll(organizationId, {
+      skip: pagination.skip,
+      take: pagination.limit,
+    });
   }
 
   @Get(':id')

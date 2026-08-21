@@ -4,6 +4,7 @@ import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { RescheduleBookingDto } from './dto/reschedule-booking.dto';
 import { CancelBookingDto } from './dto/cancel-booking.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
@@ -41,9 +42,15 @@ export class BookingsController {
   async findAll(
     @OrganizationContext() organizationId: string,
     @CurrentUser() user: UserIdentity,
+    @Query() pagination: PaginationDto,
     @Query('facilityId') facilityId?: string,
   ) {
-    return this.bookingsService.findAll(organizationId, { userId: user.userId, facilityId });
+    return this.bookingsService.findAll(organizationId, {
+      userId: user.userId,
+      facilityId,
+      skip: pagination.skip,
+      take: pagination.limit,
+    });
   }
 
   @Get('all')
@@ -53,10 +60,16 @@ export class BookingsController {
   @ApiQuery({ name: 'facilityId', required: false })
   async findAllAdmin(
     @OrganizationContext() organizationId: string,
+    @Query() pagination: PaginationDto,
     @Query('userId') userId?: string,
     @Query('facilityId') facilityId?: string,
   ) {
-    return this.bookingsService.findAll(organizationId, { userId, facilityId });
+    return this.bookingsService.findAll(organizationId, {
+      userId,
+      facilityId,
+      skip: pagination.skip,
+      take: pagination.limit,
+    });
   }
 
   @Get(':id')

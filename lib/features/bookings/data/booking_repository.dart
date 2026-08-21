@@ -29,9 +29,10 @@ class BookingRepository {
   }
 
   Future<List<Booking>> getMyBookings() async {
-    final response = await _apiClient.get<List>(_baseUrl);
+    final response = await _apiClient.get<Map<String, dynamic>>(_baseUrl);
     if (response.isSuccess) {
-      return response.data!.map((b) => Booking.fromJson(b)).toList();
+      final items = response.data!['items'] as List;
+      return items.map((b) => Booking.fromJson(b)).toList();
     }
     return [];
   }

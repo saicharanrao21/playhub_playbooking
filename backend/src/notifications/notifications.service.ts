@@ -28,12 +28,20 @@ export class NotificationsService {
     });
   }
 
-  async findAll(organizationId: string, userId: string) {
-    return this.prisma.notification.findMany({
-      where: { organizationId, userId },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
+  async findAll(organizationId: string, userId: string, filters: { skip?: number; take?: number }) {
+    const [items, total] = await Promise.all([
+      this.prisma.notification.findMany({
+        where: { organizationId, userId },
+        orderBy: { createdAt: 'desc' },
+        skip: filters.skip,
+        take: filters.take || 50,
+      }),
+      this.prisma.notification.count({
+        where: { organizationId, userId },
+      }),
+    ]);
+
+    return { items, total };
   }
 
   async markAsRead(organizationId: string, userId: string, id: string) {

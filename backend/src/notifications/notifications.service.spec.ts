@@ -14,6 +14,7 @@ describe('NotificationsService', () => {
       findFirst: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
+      count: jest.fn(),
     },
   };
 
@@ -46,8 +47,10 @@ describe('NotificationsService', () => {
 
   it('should find all notifications for a user', async () => {
     mockPrisma.notification.findMany.mockResolvedValue([{ id: 'n1' }]);
-    const result = await service.findAll('org1', 'u1');
-    expect(result).toHaveLength(1);
+    mockPrisma.notification.count.mockResolvedValue(1);
+    const result = await service.findAll('org1', 'u1', {});
+    expect(result.items).toHaveLength(1);
+    expect(result.total).toBe(1);
     expect(mockPrisma.notification.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { organizationId: 'org1', userId: 'u1' } }),
     );

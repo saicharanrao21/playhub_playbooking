@@ -4,6 +4,7 @@ import { VenuesService } from './venues.service';
 import { CreateVenueDto } from './dto/create-venue.dto';
 import { UpdateVenueDto } from './dto/update-venue.dto';
 import { OperatingHoursDto } from './dto/operating-hours.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
@@ -35,9 +36,14 @@ export class VenuesController {
   @ApiOperation({ summary: 'List all venues for a business or organization' })
   async findAll(
     @OrganizationContext() organizationId: string,
+    @Query() pagination: PaginationDto,
     @Query('businessId') businessId?: string,
   ) {
-    return this.venuesService.findAll(organizationId, businessId);
+    return this.venuesService.findAll(organizationId, {
+      businessId,
+      skip: pagination.skip,
+      take: pagination.limit,
+    });
   }
 
   @Get(':id')

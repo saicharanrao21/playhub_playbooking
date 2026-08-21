@@ -1,6 +1,7 @@
-import { Controller, Get, Patch, UseGuards, Param } from '@nestjs/common';
+import { Controller, Get, Patch, UseGuards, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
 import { OrganizationContext } from '../common/decorators/organization-context.decorator';
@@ -20,8 +21,12 @@ export class NotificationsController {
   async findAll(
     @OrganizationContext() organizationId: string,
     @CurrentUser() user: UserIdentity,
+    @Query() pagination: PaginationDto,
   ) {
-    return this.notificationsService.findAll(organizationId, user.userId);
+    return this.notificationsService.findAll(organizationId, user.userId, {
+      skip: pagination.skip,
+      take: pagination.limit,
+    });
   }
 
   @Patch(':id/read')

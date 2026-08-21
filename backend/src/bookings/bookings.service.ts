@@ -187,18 +187,31 @@ export class BookingsService {
     return booking;
   }
 
-  async findAll(organizationId: string, filters: { userId?: string; facilityId?: string }) {
-    return this.prisma.booking.findMany({
-      where: {
-        organizationId,
-        ...(filters.userId ? { userId: filters.userId } : {}),
-        ...(filters.facilityId ? { facilityId: filters.facilityId } : {}),
-      },
-      orderBy: { startTime: 'desc' },
-      include: {
-        facility: true,
-      }
-    });
+  async findAll(organizationId: string, filters: { userId?: string; facilityId?: string; skip?: number; take?: number }) {
+    const [items, total] = await Promise.all([
+      this.prisma.booking.findMany({
+        where: {
+          organizationId,
+          ...(filters.userId ? { userId: filters.userId } : {}),
+          ...(filters.facilityId ? { facilityId: filters.facilityId } : {}),
+        },
+        orderBy: { startTime: 'desc' },
+        include: {
+          facility: true,
+        },
+        skip: filters.skip,
+        take: filters.take,
+      }),
+      this.prisma.booking.count({
+        where: {
+          organizationId,
+          ...(filters.userId ? { userId: filters.userId } : {}),
+          ...(filters.facilityId ? { facilityId: filters.facilityId } : {}),
+        },
+      }),
+    ]);
+
+    return { items, total };
   }
 
   async cancel(organizationId: string, id: string, reason?: string, userId?: string) {

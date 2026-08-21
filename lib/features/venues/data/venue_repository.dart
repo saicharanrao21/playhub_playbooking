@@ -13,12 +13,10 @@ class VenueRepository implements IVenueRepository {
 
   @override
   Future<List<core.Venue>> getVenues() async {
-    final response = await _apiClient.get<List>(_baseUrl);
+    final response = await _apiClient.get<Map<String, dynamic>>(_baseUrl);
     if (response.isSuccess) {
-      // We need to map domain.Venue back to core.Venue if the interface strictly requires it
-      // or update the interface to use domain models.
-      // For now, let's assume we can cast or map.
-      return response.data!.map((v) => _toCoreVenue(domain.Venue.fromJson(v))).toList();
+      final items = response.data!['items'] as List;
+      return items.map((v) => _toCoreVenue(domain.Venue.fromJson(v))).toList();
     }
     return [];
   }

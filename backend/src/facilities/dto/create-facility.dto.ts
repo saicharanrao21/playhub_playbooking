@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsOptional, IsInt, Min, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsInt, Min, Max, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateFacilityDto {
@@ -11,6 +11,7 @@ export class CreateFacilityDto {
   @ApiProperty({ example: 'Full size 5-a-side football turf.' })
   @IsString()
   @IsOptional()
+  @MaxLength(500)
   description?: string;
 
   @ApiProperty({ example: 'category-id' })
@@ -21,6 +22,7 @@ export class CreateFacilityDto {
   @ApiProperty({ example: 10 })
   @IsInt()
   @Min(1)
+  @Max(1000)
   @IsOptional()
   capacity?: number;
 }

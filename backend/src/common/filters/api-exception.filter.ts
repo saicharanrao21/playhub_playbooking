@@ -38,11 +38,13 @@ export class ApiExceptionFilter implements ExceptionFilter {
       message = 'Validation failed in the database layer.';
     }
 
+    const isProduction = process.env.NODE_ENV === 'production';
+
     // Standardized error structure
     const errorResponse = {
       error: {
         code: this._getErrorCode(status, exception),
-        message: typeof message === 'string' ? message : (message as any).message || 'An unexpected error occurred',
+        message: this._formatMessage(message, status, isProduction),
         requestId: requestId,
         timestamp: new Date().toISOString(),
         path: request.url,
@@ -61,12 +63,22 @@ export class ApiExceptionFilter implements ExceptionFilter {
       );
     }
 
-    // In production, suppress detailed messages for 500 errors and Prisma internals
-    if (process.env.NODE_ENV === 'production' && status === HttpStatus.INTERNAL_SERVER_ERROR) {
-      errorResponse.error.message = 'An internal server error occurred.';
+    response.status(status).json(errorResponse);
+  }
+
+  private _formatMessage(message: any, status: number, isProduction: boolean): string {
+    if (isProduction && status === HttpStatus.INTERNAL_SERVER_ERROR) {
+      return 'An internal server error occurred.';
     }
 
-    response.status(status).json(errorResponse);
+    if (typeof message === 'string') return message;
+
+    // Handle NestJS ValidationPipe response
+    if (message.message && Array.isArray(message.message)) {
+      return message.message.join(', ');
+    }
+
+    return message.message || 'An unexpected error occurred';
   }
 
   private _getErrorCode(status: number, exception: any): string {
@@ -77,6 +89,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
     }
 
     switch (status) {
+      case 400: return 'BAD_REQUEST';
       case 401: return 'AUTH_REQUIRED';
       case 403: return 'INSUFFICIENT_PERMISSIONS';
       case 404: return 'RESOURCE_NOT_FOUND';
@@ -88,8 +101,10 @@ export class ApiExceptionFilter implements ExceptionFilter {
   }
 
   private _handlePrismaError(error: Prisma.PrismaClientKnownRequestError): string {
+    const isProduction = process.env.NODE_ENV === 'production';
     switch (error.code) {
       case 'P2002':
+        if (isProduction) return 'A unique constraint was violated.';
         const target = (error.meta?.target as string[])?.join(', ');
         return `Unique constraint failed on the fields: ${target}`;
       case 'P2025':

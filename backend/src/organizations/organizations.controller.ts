@@ -1,10 +1,11 @@
-import { Controller, Get, UseGuards, Param } from '@nestjs/common';
+import { Controller, Get, UseGuards, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { OrganizationsService } from './organizations.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // I need to verify this path
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
-import { RequirePermission } from '../common/decorators/require-permission.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { RequirePermission } from '../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserIdentity } from '../common/interfaces/user-identity.interface';
 
@@ -17,8 +18,11 @@ export class OrganizationsController {
 
   @Get()
   @ApiOperation({ summary: 'List all organizations (Public/Global view)' })
-  async findAll() {
-    return this.organizationsService.findAll();
+  async findAll(@Query() pagination: PaginationDto) {
+    return this.organizationsService.findAll({
+      skip: pagination.skip,
+      take: pagination.limit,
+    });
   }
 
   @Get(':organizationId/my-profile')

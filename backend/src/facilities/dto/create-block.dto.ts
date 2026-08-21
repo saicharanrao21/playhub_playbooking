@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsDateString, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BlockReason } from '@prisma/client';
 
@@ -21,5 +21,6 @@ export class CreateBlockDto {
   @ApiProperty({ example: 'Annual maintenance' })
   @IsString()
   @IsOptional()
+  @MaxLength(500)
   notes?: string;
 }

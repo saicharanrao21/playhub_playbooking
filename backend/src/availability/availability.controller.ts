@@ -1,6 +1,7 @@
-import { Controller, Get, Query, UseGuards, Param, ParseIntPipe } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Query, UseGuards, Param } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { AvailabilityService } from './availability.service';
+import { GetAvailabilityDto } from './dto/get-availability.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
@@ -16,20 +17,16 @@ export class AvailabilityController {
 
   @Get('facilities/:facilityId')
   @ApiOperation({ summary: 'Get availability for a specific facility' })
-  @ApiQuery({ name: 'date', example: '2026-08-20', description: 'Date in YYYY-MM-DD format' })
-  @ApiQuery({ name: 'duration', required: false, example: 60, description: 'Duration in minutes' })
   async getAvailability(
     @OrganizationContext() organizationId: string,
     @Param('facilityId') facilityId: string,
-    @Query('date') date: string,
-    @Query('duration') duration?: string,
+    @Query() dto: GetAvailabilityDto,
   ) {
-    const durationMinutes = duration ? parseInt(duration) : 60;
     return this.availabilityService.getAvailability(
       organizationId,
       facilityId,
-      date,
-      durationMinutes,
+      dto.date,
+      dto.duration,
     );
   }
 }

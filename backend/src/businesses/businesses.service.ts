@@ -16,10 +16,19 @@ export class BusinessesService {
     });
   }
 
-  async findAll(organizationId: string) {
-    return this.prisma.business.findMany({
-      where: { organizationId },
-    });
+  async findAll(organizationId: string, filters: { skip?: number; take?: number }) {
+    const [items, total] = await Promise.all([
+      this.prisma.business.findMany({
+        where: { organizationId },
+        skip: filters.skip,
+        take: filters.take,
+      }),
+      this.prisma.business.count({
+        where: { organizationId },
+      }),
+    ]);
+
+    return { items, total };
   }
 
   async findOne(organizationId: string, id: string) {

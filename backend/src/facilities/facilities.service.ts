@@ -31,20 +31,36 @@ export class FacilitiesService {
     });
   }
 
-  async findAll(organizationId: string, venueId: string) {
-    return this.prisma.facility.findMany({
-      where: {
-        venueId,
-        venue: {
-          business: {
-            organizationId,
+  async findAll(organizationId: string, venueId: string, filters: { skip?: number; take?: number }) {
+    const [items, total] = await Promise.all([
+      this.prisma.facility.findMany({
+        where: {
+          venueId,
+          venue: {
+            business: {
+              organizationId,
+            },
           },
         },
-      },
-      include: {
-        category: true,
-      },
-    });
+        include: {
+          category: true,
+        },
+        skip: filters.skip,
+        take: filters.take,
+      }),
+      this.prisma.facility.count({
+        where: {
+          venueId,
+          venue: {
+            business: {
+              organizationId,
+            },
+          },
+        },
+      }),
+    ]);
+
+    return { items, total };
   }
 
   async findOne(organizationId: string, id: string) {

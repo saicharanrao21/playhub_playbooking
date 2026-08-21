@@ -4,6 +4,7 @@ import { FacilitiesService } from './facilities.service';
 import { CreateFacilityDto } from './dto/create-facility.dto';
 import { UpdateFacilityDto } from './dto/update-facility.dto';
 import { CreateBlockDto } from './dto/create-block.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
@@ -36,8 +37,12 @@ export class FacilitiesController {
   async findAll(
     @OrganizationContext() organizationId: string,
     @Query('venueId') venueId: string,
+    @Query() pagination: PaginationDto,
   ) {
-    return this.facilitiesService.findAll(organizationId, venueId);
+    return this.facilitiesService.findAll(organizationId, venueId, {
+      skip: pagination.skip,
+      take: pagination.limit,
+    });
   }
 
   @Get(':id')
