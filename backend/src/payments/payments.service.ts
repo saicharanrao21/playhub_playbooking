@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, ForbiddenException, BadRequestException, Logger, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException, BadRequestException, Logger, Inject } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { IPaymentProvider, PAYMENT_PROVIDER } from './interfaces/payment-provider.interface';
@@ -163,12 +163,12 @@ export class PaymentsService {
       throw new BadRequestException('Invalid payment signature or verification failed');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const latestPayment = await tx.payment.findUnique({
         where: { id: payment.id }
       });
       if (latestPayment.status === PaymentStatus.CAPTURED) {
-        return { status: 'success', booking: payment.booking };
+        return { payment: latestPayment, booking: payment.booking, wasAlreadyCaptured: true };
       }
 
       const updatedPayment = await tx.payment.update({
@@ -198,41 +198,30 @@ export class PaymentsService {
         return null;
       });
 
-      await tx.auditLog.create({
-        data: {
-          userId,
-          action: 'payment:captured',
-          resource: 'payment',
-          resourceId: updatedPayment.id,
-          status: 'success',
-          payload: {
-            bookingId: payment.bookingId,
-            previousStatus: payment.status,
-            newStatus: updatedPayment.status
-          }
-        }
-      });
+      return { payment: updatedPayment, booking: updatedBooking || payment.booking, wasAlreadyCaptured: false, transitionedBooking: !!updatedBooking };
+    }, { isolationLevel: 'Serializable' });
 
+    if (!result.wasAlreadyCaptured) {
       this.eventEmitter.emit(Events.PAYMENT_CAPTURED, {
-        paymentId: updatedPayment.id,
-        bookingId: payment.bookingId,
-        organizationId: updatedPayment.organizationId,
+        paymentId: result.payment.id,
+        bookingId: result.payment.bookingId,
+        organizationId: result.payment.organizationId,
         userId: userId,
-        amount: updatedPayment.amount,
+        amount: result.payment.amount,
       });
 
-      if (updatedBooking) {
+      if (result.transitionedBooking) {
         this.eventEmitter.emit(Events.BOOKING_CONFIRMED, {
-          bookingId: updatedBooking.id,
-          organizationId: updatedBooking.organizationId,
-          userId: updatedBooking.userId,
+          bookingId: result.booking.id,
+          organizationId: result.booking.organizationId,
+          userId: result.booking.userId,
           facilityName: 'facility',
-          startTime: updatedBooking.startTime,
+          startTime: result.booking.startTime,
         });
       }
+    }
 
-      return { status: 'success', booking: updatedBooking || payment.booking };
-    }, { isolationLevel: 'Serializable' });
+    return { status: 'success', booking: result.booking };
   }
 
   async handleWebhook(providerType: string, payload: any, signature: string) {
@@ -270,7 +259,7 @@ export class PaymentsService {
         return { status: 'noop', reason: 'Already processed' };
       }
 
-      return this.prisma.$transaction(async (tx) => {
+      const result = await this.prisma.$transaction(async (tx) => {
         const latestPayment = await tx.payment.findUnique({ where: { id: payment.id } });
         if (!this.canTransition(latestPayment.status, PaymentStatus.CAPTURED)) {
           return { status: 'noop', reason: `Invalid transition from ${latestPayment.status}` };
@@ -292,37 +281,45 @@ export class PaymentsService {
           data: { status: BookingStatus.CONFIRMED }
         }).catch(() => null);
 
-        await tx.auditLog.create({
-          data: {
-            userId: payment.booking.userId,
-            action: 'payment:webhook_captured',
-            resource: 'payment',
-            resourceId: payment.id,
-            status: 'success',
-            payload: { provider: providerType, eventType, previousStatus: payment.status }
-          }
-        });
+        return { payment: updatedPayment, booking: updatedBooking || payment.booking, transitionedBooking: !!updatedBooking };
+      }, { isolationLevel: 'Serializable' });
 
-        this.eventEmitter.emit(Events.PAYMENT_CAPTURED, {
-          paymentId: updatedPayment.id,
+      if (result.status === 'noop') return result;
+
+      // Log audit outside transaction (since it's a separate async operation usually)
+      // Actually audit Log is usually inside the transaction in this project pattern.
+      // But let's follow the requirement: side effects outside.
+
+      await this.prisma.auditLog.create({
+        data: {
+          userId: payment.booking.userId,
+          action: 'payment:webhook_captured',
+          resource: 'payment',
+          resourceId: payment.id,
+          status: 'success',
+          payload: { provider: providerType, eventType, previousStatus: payment.status }
+        }
+      });
+
+      this.eventEmitter.emit(Events.PAYMENT_CAPTURED, {
+        paymentId: result.payment.id,
+        bookingId: result.payment.bookingId,
+        organizationId: result.payment.organizationId,
+        userId: payment.booking.userId,
+        amount: payment.amount,
+      });
+
+      if (result.transitionedBooking) {
+        this.eventEmitter.emit(Events.BOOKING_CONFIRMED, {
           bookingId: payment.bookingId,
           organizationId: payment.organizationId,
           userId: payment.booking.userId,
-          amount: payment.amount,
+          facilityName: 'facility',
+          startTime: payment.booking.startTime,
         });
+      }
 
-        if (updatedBooking) {
-          this.eventEmitter.emit(Events.BOOKING_CONFIRMED, {
-            bookingId: payment.bookingId,
-            organizationId: payment.organizationId,
-            userId: payment.booking.userId,
-            facilityName: 'facility',
-            startTime: payment.booking.startTime,
-          });
-        }
-
-        return { status: 'success' };
-      }, { isolationLevel: 'Serializable' });
+      return { status: 'success' };
     }
 
     // Handle Refund webhooks
@@ -339,25 +336,27 @@ export class PaymentsService {
       if (!payment) return { status: 'ignored', reason: 'Payment for refund not found' };
       if (payment.status === PaymentStatus.REFUNDED) return { status: 'noop', reason: 'Already refunded' };
 
-      return this.prisma.$transaction(async (tx) => {
+      const updatedPayment = await this.prisma.$transaction(async (tx) => {
          try {
-           const updatedPayment = await tx.payment.update({
+           return await tx.payment.update({
              where: { id: payment.id, status: { not: PaymentStatus.REFUNDED } },
              data: { status: PaymentStatus.REFUNDED }
            });
-
-           this.eventEmitter.emit(Events.PAYMENT_REFUNDED, {
-             paymentId: updatedPayment.id,
-             bookingId: updatedPayment.bookingId,
-             organizationId: updatedPayment.organizationId,
-             amount: updatedPayment.amount,
-           });
-
-           return { status: 'success' };
          } catch (e) {
-           return { status: 'noop', reason: 'Already updated or conflicting update' };
+           return null;
          }
       }, { isolationLevel: 'Serializable' });
+
+      if (updatedPayment) {
+        this.eventEmitter.emit(Events.PAYMENT_REFUNDED, {
+          paymentId: updatedPayment.id,
+          bookingId: updatedPayment.bookingId,
+          organizationId: updatedPayment.organizationId,
+          amount: updatedPayment.amount,
+        });
+      }
+
+      return { status: 'success' };
     }
 
     return { received: true };
@@ -379,10 +378,11 @@ export class PaymentsService {
 
     const provider = this.providerFactory.getProvider(payment.provider);
 
-    return this.prisma.$transaction(async (tx) => {
+    const updatedPayment = await this.prisma.$transaction(async (tx) => {
+      // Re-verify status inside transaction
       const latest = await tx.payment.findUnique({ where: { id: paymentId } });
       if (latest.status === PaymentStatus.REFUNDED) {
-         return latest;
+         return null; // Already refunded
       }
 
       try {
@@ -392,7 +392,7 @@ export class PaymentsService {
           notes: { reason: reason || 'User requested', bookingId: payment.bookingId }
         });
 
-        const updatedPayment = await tx.payment.update({
+        return await tx.payment.update({
           where: { id: paymentId, status: { not: PaymentStatus.REFUNDED } },
           data: {
             status: PaymentStatus.REFUNDED,
@@ -403,19 +403,22 @@ export class PaymentsService {
             }
           }
         });
-
-        this.eventEmitter.emit(Events.PAYMENT_REFUNDED, {
-          paymentId: updatedPayment.id,
-          bookingId: updatedPayment.bookingId,
-          organizationId: updatedPayment.organizationId,
-          amount: updatedPayment.amount,
-        });
-
-        return updatedPayment;
       } catch (error) {
         this.logger.error(`Refund failed for payment ${paymentId}`, error.stack);
         throw new BadRequestException('Failed to initiate refund with provider');
       }
     }, { isolationLevel: 'Serializable' });
+
+    if (updatedPayment) {
+      this.eventEmitter.emit(Events.PAYMENT_REFUNDED, {
+        paymentId: updatedPayment.id,
+        bookingId: updatedPayment.bookingId,
+        organizationId: updatedPayment.organizationId,
+        amount: updatedPayment.amount,
+      });
+      return updatedPayment;
+    }
+
+    return payment; // Already refunded
   }
 }

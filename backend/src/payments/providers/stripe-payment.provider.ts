@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import {
@@ -24,6 +24,9 @@ export class StripePaymentProvider implements IPaymentProvider {
   }
 
   async createOrder(options: CreateOrderOptions): Promise<PaymentOrder> {
+    if (!this.stripe) {
+      throw new InternalServerErrorException('Stripe provider not initialized');
+    }
     try {
       const intent = await this.stripe.paymentIntents.create({
         amount: options.amount,
@@ -67,6 +70,9 @@ export class StripePaymentProvider implements IPaymentProvider {
   }
 
   async verifyCheckout(data: any, expectedAmountMinorUnits: number): Promise<boolean> {
+    if (!this.stripe) {
+      throw new InternalServerErrorException('Stripe provider not initialized');
+    }
     try {
       const intent = await this.stripe.paymentIntents.retrieve(data.providerPaymentId);
       // Authoritative check of status and amount
@@ -78,6 +84,9 @@ export class StripePaymentProvider implements IPaymentProvider {
   }
 
   async initiateRefund(options: RefundOptions): Promise<RefundResult> {
+    if (!this.stripe) {
+      throw new InternalServerErrorException('Stripe provider not initialized');
+    }
     try {
       const refund = await this.stripe.refunds.create({
         payment_intent: options.paymentId,

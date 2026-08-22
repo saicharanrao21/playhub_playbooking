@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 const Razorpay = require('razorpay');
 import * as crypto from 'crypto';
@@ -28,6 +28,9 @@ export class RazorpayPaymentProvider implements IPaymentProvider {
   }
 
   async createOrder(options: CreateOrderOptions): Promise<PaymentOrder> {
+    if (!this.razorpay) {
+      throw new InternalServerErrorException('Razorpay provider not initialized');
+    }
     try {
       const order = await this.razorpay.orders.create({
         amount: options.amount,
@@ -64,6 +67,9 @@ export class RazorpayPaymentProvider implements IPaymentProvider {
   }
 
   async verifyCheckout(data: any, expectedAmountMinorUnits: number): Promise<boolean> {
+    if (!this.razorpay) {
+      throw new InternalServerErrorException('Razorpay provider not initialized');
+    }
     const secret = this.configService.get<string>('RAZORPAY_KEY_SECRET');
     if (!secret) {
       this.logger.error('RAZORPAY_KEY_SECRET is not configured');
@@ -92,6 +98,9 @@ export class RazorpayPaymentProvider implements IPaymentProvider {
   }
 
   async initiateRefund(options: RefundOptions): Promise<RefundResult> {
+    if (!this.razorpay) {
+      throw new InternalServerErrorException('Razorpay provider not initialized');
+    }
     try {
       const refund = await this.razorpay.payments.refund(options.paymentId, {
         amount: options.amount,

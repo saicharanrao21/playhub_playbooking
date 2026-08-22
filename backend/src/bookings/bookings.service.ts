@@ -87,7 +87,7 @@ export class BookingsService {
     const totalPrice = Number(pricingRule.basePrice) * durationInHours;
 
     // 2. Concurrency-Safe Transaction
-    return this.prisma.$transaction(async (tx) => {
+    const booking = await this.prisma.$transaction(async (tx) => {
       // 2a. Idempotency check
       if (idempotencyKey) {
         const existing = await tx.booking.findUnique({
@@ -130,7 +130,7 @@ export class BookingsService {
       }
 
       // 3. Create Booking - Start as PENDING (awaiting payment confirmation)
-      const booking = await tx.booking.create({
+      return tx.booking.create({
         data: {
           organizationId,
           userId,
@@ -143,19 +143,20 @@ export class BookingsService {
           idempotencyKey,
         },
       });
-
-      this.eventEmitter.emit(Events.BOOKING_CREATED, {
-        bookingId: booking.id,
-        organizationId: booking.organizationId,
-        userId: booking.userId,
-        facilityName: facility.name,
-        startTime: booking.startTime,
-      });
-
-      return booking;
     }, {
       isolationLevel: 'Serializable',
     });
+
+    // 4. Emit event after successful transaction commit
+    this.eventEmitter.emit(Events.BOOKING_CREATED, {
+      bookingId: booking.id,
+      organizationId: booking.organizationId,
+      userId: booking.userId,
+      facilityName: facility.name,
+      startTime: booking.startTime,
+    });
+
+    return booking;
   }
 
   async findOne(organizationId: string, id: string, userId?: string) {
@@ -230,9 +231,9 @@ export class BookingsService {
 
     this.validateStatusTransition(booking.status, BookingStatus.CANCELLED);
 
-    return this.prisma.$transaction(async (tx) => {
+    const updatedBooking = await this.prisma.$transaction(async (tx) => {
       // Atomic re-check of status within transaction
-      const updatedBooking = await tx.booking.update({
+      const updated = await tx.booking.update({
         where: {
           id,
           status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] }
@@ -254,17 +255,19 @@ export class BookingsService {
         data: { status: PaymentStatus.CANCELLED }
       });
 
-      this.eventEmitter.emit(Events.BOOKING_CANCELLED, {
-        bookingId: updatedBooking.id,
-        organizationId: updatedBooking.organizationId,
-        userId: updatedBooking.userId,
-        facilityName: updatedBooking.facility.name,
-        startTime: updatedBooking.startTime,
-        hasCapturedPayments: updatedBooking.payments.some(p => p.status === PaymentStatus.CAPTURED)
-      });
-
-      return updatedBooking;
+      return updated;
     }, { isolationLevel: 'Serializable' });
+
+    this.eventEmitter.emit(Events.BOOKING_CANCELLED, {
+      bookingId: updatedBooking.id,
+      organizationId: updatedBooking.organizationId,
+      userId: updatedBooking.userId,
+      facilityName: updatedBooking.facility.name,
+      startTime: updatedBooking.startTime,
+      hasCapturedPayments: updatedBooking.payments.some(p => p.status === PaymentStatus.CAPTURED)
+    });
+
+    return updatedBooking;
   }
 
   async reschedule(organizationId: string, bookingId: string, dto: RescheduleBookingDto, userId?: string) {
@@ -318,7 +321,7 @@ export class BookingsService {
 
     const requestedInterval = new TimeInterval(newStart, newEnd);
 
-    return this.prisma.$transaction(async (tx) => {
+    const updatedBooking = await this.prisma.$transaction(async (tx) => {
       // 1. Check for overlaps excluding the current booking
       const existingOverlaps = await tx.booking.findFirst({
         where: {
@@ -349,7 +352,7 @@ export class BookingsService {
       }
 
       // 3. Update Booking
-      const updatedBooking = await tx.booking.update({
+      return tx.booking.update({
         where: {
           id: bookingId,
           status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] } // Atomic re-check
@@ -361,18 +364,18 @@ export class BookingsService {
         },
         include: { facility: true }
       });
-
-      this.eventEmitter.emit(Events.BOOKING_RESCHEDULED, {
-        bookingId: updatedBooking.id,
-        organizationId: updatedBooking.organizationId,
-        userId: updatedBooking.userId,
-        facilityName: updatedBooking.facility.name,
-        startTime: updatedBooking.startTime,
-      });
-
-      return updatedBooking;
     }, {
       isolationLevel: 'Serializable',
     });
+
+    this.eventEmitter.emit(Events.BOOKING_RESCHEDULED, {
+      bookingId: updatedBooking.id,
+      organizationId: updatedBooking.organizationId,
+      userId: updatedBooking.userId,
+      facilityName: updatedBooking.facility.name,
+      startTime: updatedBooking.startTime,
+    });
+
+    return updatedBooking;
   }
 }
