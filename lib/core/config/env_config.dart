@@ -22,21 +22,22 @@ class EnvConfig {
 
   factory EnvConfig.dev() => const EnvConfig(
     environment: AppEnvironment.dev,
-    apiBaseUrl: 'https://dev-api.playhub.com/api',
+    apiBaseUrl: 'https://dev-api.playhub.com/api/v1',
     enableLogging: true,
   );
 
   factory EnvConfig.staging() => const EnvConfig(
     environment: AppEnvironment.staging,
-    apiBaseUrl: 'https://staging-api.playhub.com/api',
+    apiBaseUrl: 'https://staging-api.playhub.com/api/v1',
     enableLogging: true,
     enableAnalytics: true,
   );
 
   factory EnvConfig.prod() => const EnvConfig(
     environment: AppEnvironment.prod,
-    apiBaseUrl: 'https://api.playhub.com/api',
+    apiBaseUrl: 'https://api.playhub.com/api/v1',
     enableLogging: false,
     enableAnalytics: true,
   );
 }
+

@@ -42,6 +42,9 @@ async function bootstrap() {
   // Global Prefix
   app.setGlobalPrefix(apiPrefix);
 
+  // Enable graceful shutdown
+  app.enableShutdownHooks();
+
   // Global Filters
   app.useGlobalFilters(new ApiExceptionFilter());
 

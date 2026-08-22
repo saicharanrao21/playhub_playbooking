@@ -17,11 +17,14 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { HealthController } from './health/health.controller';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
+import { validate } from './common/config/env.validation';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
+      validate,
     }),
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],

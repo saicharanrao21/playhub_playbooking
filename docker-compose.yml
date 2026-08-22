@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=playhub
+      - POSTGRES_PASSWORD=playhub_password
+      - POSTGRES_DB=playhub
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://playhub:playhub_password@db:5432/playhub?schema=public
+      - JWT_ACCESS_SECRET=change-me-at-least-32-chars-long-access
+      - JWT_REFRESH_SECRET=change-me-at-least-32-chars-long-refresh
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
