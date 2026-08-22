@@ -54,21 +54,32 @@ class VenueRepository implements IVenueRepository {
       city: v.city,
       latitude: v.latitude ?? 0.0,
       longitude: v.longitude ?? 0.0,
-      imageUrls: [],
+      media: v.media.map((m) => core.Media(
+        id: m.id,
+        url: m.url,
+        type: core.MediaType.values.byName(m.type.name),
+        displayOrder: m.displayOrder,
+      )).toList(),
       amenities: [],
       rating: 0.0,
       reviewCount: 0,
-      categoryId: '',
+      categoryId: v.categoryId,
       facilities: v.facilities?.map((f) => core.Facility(
         id: f.id,
         name: f.name,
         description: f.description,
+        media: f.media.map((m) => core.Media(
+          id: m.id,
+          url: m.url,
+          type: core.MediaType.values.byName(m.type.name),
+          displayOrder: m.displayOrder,
+        )).toList(),
       )).toList(),
     );
   }
 
   // Additional method for Phase 22 specific needs if not in interface
-  Future<domain.Venue?> getFullVenue(String id) async {
+  Future<domain.Venue? > getFullVenue(String id) async {
     final response = await _apiClient.get('$_baseUrl/$id');
     if (response.isSuccess) {
       return domain.Venue.fromJson(response.data);

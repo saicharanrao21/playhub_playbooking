@@ -58,6 +58,26 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   STRIPE_WEBHOOK_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  MEDIA_STORAGE_PROVIDER?: string;
+
+  @IsString()
+  @IsOptional()
+  MEDIA_PUBLIC_BASE_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  STORAGE_LOCAL_DIR?: string;
+
+  @IsString()
+  @IsOptional()
+  STORAGE_S3_BUCKET?: string;
+
+  @IsString()
+  @IsOptional()
+  STORAGE_S3_REGION?: string;
 }
 
 export function validate(config: Record<string, any>) {

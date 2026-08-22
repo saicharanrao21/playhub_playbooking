@@ -95,12 +95,18 @@ enum NotificationType {
   SYSTEM_ALERT
 }
 
+enum MediaType {
+  IMAGE
+  DOCUMENT
+}
+
 model User {
   id              String        @id @default(uuid())
   email           String        @unique
   phoneNumber     String?       @unique
   fullName        String?
   passwordHash    String?
+  avatarUrl       String?
   status          AccountStatus @default(ACTIVE)
   isEmailVerified Boolean       @default(false)
   isPhoneVerified Boolean       @default(false)
@@ -112,6 +118,7 @@ model User {
   auditLogs     AuditLog[]
   bookings      Booking[]
   notifications Notification[]
+  media         Media[]
 
   @@map("users")
 }
@@ -129,6 +136,7 @@ model Organization {
   bookings      Booking[]
   payments      Payment[]
   notifications Notification[]
+  media         Media[]
 
   @@map("organizations")
 }
@@ -229,6 +237,7 @@ model Venue {
   cityRel        City?            @relation(fields: [cityId], references: [id])
   facilities     Facility[]
   operatingHours OperatingHours[]
+  media          Media[]
 
   @@unique([businessId, slug])
   @@index([businessId])
@@ -289,6 +298,7 @@ model Facility {
   availabilityBlocks AvailabilityBlock[]
   pricingRules      PricingRule[]
   bookings          Booking[]
+  media             Media[]
 
   @@index([venueId])
   @@index([categoryId])
@@ -468,4 +478,33 @@ model Notification {
   @@index([userId])
   @@index([isRead])
   @@map("notifications")
+}
+
+model Media {
+  id             String    @id @default(uuid())
+  organizationId String?
+  url            String
+  storageKey     String
+  mimeType       String
+  fileSize       Int
+  type           MediaType @default(IMAGE)
+
+  userId         String?
+  venueId        String?
+  facilityId     String?
+
+  displayOrder   Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  user           User?         @relation(fields: [userId], references: [id])
+  venue          Venue?        @relation(fields: [venueId], references: [id])
+  facility       Facility?     @relation(fields: [facilityId], references: [id])
+
+  @@index([organizationId])
+  @@index([venueId])
+  @@index([facilityId])
+  @@index([userId])
+  @@map("media")
 }

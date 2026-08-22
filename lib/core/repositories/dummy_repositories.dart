@@ -28,8 +28,12 @@ class DummyData {
       city: 'Hyderabad',
       latitude: 17.4483,
       longitude: 78.3915,
-      imageUrls: [
-        'https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=800',
+      media: [
+        Media(
+          id: 'm1',
+          url: 'https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=800',
+          type: MediaType.image,
+        ),
       ],
       amenities: ['Floodlights', 'Parking', 'Changing Rooms', 'Water'],
       rating: 4.5,
@@ -46,8 +50,12 @@ class DummyData {
       city: 'Hyderabad',
       latitude: 17.4622,
       longitude: 78.3568,
-      imageUrls: [
-        'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800',
+      media: [
+        Media(
+          id: 'm2',
+          url: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800',
+          type: MediaType.image,
+        ),
       ],
       amenities: ['Parking', 'Bibs', 'Shower'],
       rating: 4.8,

@@ -34,6 +34,31 @@ class Business {
   });
 }
 
+enum MediaType { image, document }
+
+class Media {
+  final String id;
+  final String url;
+  final MediaType type;
+  final int displayOrder;
+
+  Media({
+    required this.id,
+    required this.url,
+    required this.type,
+    this.displayOrder = 0,
+  });
+
+  factory Media.fromJson(Map<String, dynamic> json) {
+    return Media(
+      id: json['id'],
+      url: json['url'],
+      type: MediaType.values.byName(json['type'].toString().toLowerCase()),
+      displayOrder: json['displayOrder'] ?? 0,
+    );
+  }
+}
+
 class Venue {
   final String id;
   final String businessId;
@@ -44,7 +69,7 @@ class Venue {
   final String? cityId;
   final double? latitude;
   final double? longitude;
-  final List<String> imageUrls;
+  final List<Media> media;
   final List<String> amenities;
   final double rating;
   final int reviewCount;
@@ -61,13 +86,18 @@ class Venue {
     this.cityId,
     this.latitude,
     this.longitude,
-    required this.imageUrls,
+    required this.media,
     required this.amenities,
     required this.rating,
     required this.reviewCount,
     this.categoryId,
     this.facilities,
   });
+
+  List<String> get imageUrls => media
+      .where((m) => m.type == MediaType.image)
+      .map((m) => m.url)
+      .toList();
 
   factory Venue.fromJson(Map<String, dynamic> json) {
     return Venue(
@@ -80,7 +110,7 @@ class Venue {
       cityId: json['cityId'],
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
-      imageUrls: (json['imageUrls'] as List?)?.map((e) => e as String).toList() ?? [],
+      media: (json['media'] as List?)?.map((e) => Media.fromJson(e)).toList() ?? [],
       amenities: (json['amenities'] as List?)?.map((e) => e as String).toList() ?? [],
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       reviewCount: json['reviewCount'] ?? 0,
@@ -96,6 +126,7 @@ class Facility {
   final String? description;
   final String? categoryId;
   final String? activityId;
+  final List<Media> media;
 
   Facility({
     required this.id,
@@ -103,7 +134,13 @@ class Facility {
     this.description,
     this.categoryId,
     this.activityId,
+    required this.media,
   });
+
+  List<String> get imageUrls => media
+      .where((m) => m.type == MediaType.image)
+      .map((m) => m.url)
+      .toList();
 
   factory Facility.fromJson(Map<String, dynamic> json) {
     return Facility(
@@ -112,6 +149,7 @@ class Facility {
       description: json['description'],
       categoryId: json['categoryId'],
       activityId: json['activityId'],
+      media: (json['media'] as List?)?.map((e) => Media.fromJson(e)).toList() ?? [],
     );
   }
 }

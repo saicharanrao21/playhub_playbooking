@@ -73,9 +73,10 @@ export class VenuesService {
         include: {
           facilities: {
             where: { status: FacilityStatus.ACTIVE },
-            include: { category: true, activity: true },
+            include: { category: true, activity: true, media: true },
           },
           cityRel: true,
+          media: true,
         },
         skip: filters.skip,
         take: filters.limit,

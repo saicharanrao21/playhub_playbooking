@@ -45,6 +45,7 @@ export class FacilitiesService {
         include: {
           category: true,
           activity: true,
+          media: true,
         },
         skip: filters.skip,
         take: filters.take,
@@ -79,6 +80,7 @@ export class FacilitiesService {
         activity: true,
         availabilityBlocks: true,
         pricingRules: true,
+        media: true,
       },
     });
 

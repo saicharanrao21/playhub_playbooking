@@ -7,6 +7,7 @@ import '../repositories/city_repository.dart';
 import '../repositories/category_repository.dart';
 import '../repositories/activity_repository.dart';
 import '../repositories/discovery_repository.dart';
+import '../repositories/media_repository.dart';
 
 final venueRepositoryProvider = Provider<IVenueRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
@@ -32,4 +33,10 @@ final activityRepositoryProvider = Provider<IActivityRepository>((ref) {
 final discoveryRepositoryProvider = Provider<IDiscoveryRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return DiscoveryRepository(apiClient);
+});
+
+final mediaRepositoryProvider = Provider<MediaRepository>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  final orgId = ref.watch(activeOrganizationProvider) ?? '';
+  return MediaRepository(apiClient, orgId);
 });

@@ -21,6 +21,11 @@
 | `RAZORPAY_WEBHOOK_SECRET` | Razorpay Webhook Secret | Optional |
 | `STRIPE_SECRET_KEY` | Stripe Secret Key | Optional (for payments) |
 | `STRIPE_WEBHOOK_SECRET` | Stripe Webhook Secret | Optional |
+| `MEDIA_STORAGE_PROVIDER` | `local` or `s3` | Default `local` |
+| `MEDIA_PUBLIC_BASE_URL` | Base URL for serving media | e.g. `https://cdn.playhub.com` |
+| `STORAGE_S3_BUCKET` | S3 Bucket Name | Required if provider is `s3` |
+| `STORAGE_S3_REGION` | S3 Region | Required if provider is `s3` |
+| `STORAGE_LOCAL_DIR` | Local directory for uploads | Default `uploads` |
 
 ### Deployment Steps
 1. **Infrastructure**: Provision a PostgreSQL database and a Node.js hosting environment (e.g. AWS ECS, Heroku, DigitalOcean App Platform).

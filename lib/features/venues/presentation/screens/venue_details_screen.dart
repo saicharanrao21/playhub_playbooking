@@ -32,6 +32,7 @@ final venueDetailsProvider = FutureProvider.family<domain.Venue?, String>((
     postalCode: '',
     timezone: 'UTC',
     status: domain.VenueStatus.active,
+    media: [],
     facilities: venue.facilities?.map((f) => domain.Facility(
       id: f.id,
       venueId: venue.id,
@@ -39,6 +40,7 @@ final venueDetailsProvider = FutureProvider.family<domain.Venue?, String>((
       name: f.name,
       description: f.description,
       status: domain.FacilityStatus.active,
+      media: [],
     )).toList(),
   );
 });
@@ -70,7 +72,19 @@ class VenueDetailsScreen extends ConsumerWidget {
                     ),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
-                  background: const Placeholder(), 
+                  background: venue.imageUrls.isNotEmpty
+                      ? Image.network(
+                          venue.imageUrls.first,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.image_not_supported, size: 100),
+                          ),
+                        )
+                      : Container(
+                          color: Colors.grey[300],
+                          child: const Icon(Icons.business, size: 100),
+                        ),
                 ),
               ),
               SliverToBoxAdapter(
@@ -116,6 +130,9 @@ class VenueDetailsScreen extends ConsumerWidget {
                         Column(
                           children: venue.facilities!.map((f) => Card(
                             child: ListTile(
+                              leading: f.imageUrls.isNotEmpty
+                                  ? Image.network(f.imageUrls.first, width: 60, height: 60, fit: BoxFit.cover)
+                                  : const Icon(Icons.sports, size: 40),
                               title: Text(f.name),
                               subtitle: Text(f.description ?? ''),
                               trailing: ElevatedButton(
