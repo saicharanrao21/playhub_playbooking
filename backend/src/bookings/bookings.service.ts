@@ -250,6 +250,7 @@ export class BookingsService {
       await tx.payment.updateMany({
         where: {
           bookingId: id,
+          organizationId: updated.organizationId,
           status: { notIn: [PaymentStatus.CAPTURED, PaymentStatus.REFUNDED] }
         },
         data: { status: PaymentStatus.CANCELLED }

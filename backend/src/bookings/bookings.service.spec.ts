@@ -252,4 +252,9 @@ describe('BookingsService (Concurrency & Logic)', () => {
     await expect(service.reschedule('org1', 'b1', dto, 'u1'))
       .rejects.toThrow(BadRequestException);
   });
+
+  it('should throw NotFoundException if trying to cancel a booking from another organization', async () => {
+    mockPrisma.booking.findFirst.mockResolvedValue(null);
+    await expect(service.cancel('other_org', 'b1', undefined, 'u1')).rejects.toThrow(NotFoundException);
+  });
 });
