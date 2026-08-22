@@ -26,9 +26,10 @@
 1. **Infrastructure**: Provision a PostgreSQL database and a Node.js hosting environment (e.g. AWS ECS, Heroku, DigitalOcean App Platform).
 2. **Environment**: Set all required environment variables in your hosting provider's dashboard.
 3. **Build**: Run `npm install` followed by `npm run build` in the `backend/` directory.
-4. **Prisma**:
+4. **Prisma & Migration**:
    - Run `npx prisma generate` to build the client.
-   - Run `npm run prisma:migrate:deploy` to apply migrations to the production database.
+   - **Recommended**: Run `npm run prisma:migrate:deploy` as a separate release step/job before starting the application. 
+   - Alternatively, if your platform doesn't support separate release steps, the Docker image can be configured to run it on startup by changing the CMD to `npm run start:prod:migrate`.
 5. **Start**: Run `npm run start:prod` (executes `node dist/main`).
 
 ### Docker Deployment
@@ -37,6 +38,31 @@ A `Dockerfile` is provided in the `backend/` directory for containerized deploym
 docker build -t playhub-backend ./backend
 docker run -p 3000:3000 --env-file .env playhub-backend
 ```
+
+## Failure and Rollback Guidance
+
+### Migration Failure
+If `prisma migrate deploy` fails:
+1. **STOP** the deployment immediately.
+2. Inspect logs to determine if the failure is due to a connection issue or a schema conflict.
+3. If it's a conflict, do NOT manually edit the `_prisma_migrations` table unless absolutely necessary.
+4. Fix the issue and re-run migrations.
+
+### Application Startup Failure
+If the application fails to start or fails readiness checks:
+1. Check if all environment variables are correctly set.
+2. Verify database connectivity via the readiness logs.
+3. **Rollback**: Redeploy the previous stable Docker image version. Prisma migrations are generally backward compatible if designed carefully.
+
+## Staging Smoke Test Plan
+Perform these steps after a successful staging deployment:
+
+1. **Health**: Confirm `/api/v1/health` and `/api/v1/health/readiness` return `ok` and `ready`.
+2. **Auth**: Register a new user, log in, and verify the session persists.
+3. **Tenant**: Verify you can see your organization context and cannot access other organizations.
+4. **Booking**: Search for a venue, check availability, and create a booking.
+5. **Payment**: Initiate a payment order. Verify the transition to `PENDING`.
+6. **Cancellation**: Cancel a booking and verify the status update.
 
 ## Flutter Deployment
 
