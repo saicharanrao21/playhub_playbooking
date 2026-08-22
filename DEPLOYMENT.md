@@ -18,7 +18,9 @@
 | `CORS_ORIGINS` | Allowed CORS origins | Comma-separated list |
 | `RAZORPAY_KEY_ID` | Razorpay Key ID | Optional (for payments) |
 | `RAZORPAY_KEY_SECRET` | Razorpay Key Secret | Optional (for payments) |
+| `RAZORPAY_WEBHOOK_SECRET` | Razorpay Webhook Secret | Optional |
 | `STRIPE_SECRET_KEY` | Stripe Secret Key | Optional (for payments) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe Webhook Secret | Optional |
 
 ### Deployment Steps
 1. **Infrastructure**: Provision a PostgreSQL database and a Node.js hosting environment (e.g. AWS ECS, Heroku, DigitalOcean App Platform).
@@ -26,7 +28,7 @@
 3. **Build**: Run `npm install` followed by `npm run build` in the `backend/` directory.
 4. **Prisma**:
    - Run `npx prisma generate` to build the client.
-   - Run `npx prisma migrate deploy` to apply migrations to the production database.
+   - Run `npm run prisma:migrate:deploy` to apply migrations to the production database.
 5. **Start**: Run `npm run start:prod` (executes `node dist/main`).
 
 ### Docker Deployment
@@ -42,9 +44,15 @@ docker run -p 3000:3000 --env-file .env playhub-backend
 - Flutter SDK (Stable channel)
 - Android Studio / Xcode for platform-specific builds
 
-### Configuration
-1. Update `lib/core/config/env_config.dart` with your production API URL if different from the default.
-2. Ensure you have the necessary signing keys for Android (`key.properties`) and iOS.
+### Build with Environment Variables
+Use `--dart-define` to configure the environment at build time.
+- `APP_ENV`: `local`, `dev`, `staging`, or `prod` (default: `dev`).
+- `API_BASE_URL`: Override the default API URL.
+
+#### Android Staging Build Example
+```bash
+flutter build apk --release --dart-define=APP_ENV=staging --dart-define=API_BASE_URL=https://staging-api.playhub.com/api/v1
+```
 
 ### Build Commands
 #### Android

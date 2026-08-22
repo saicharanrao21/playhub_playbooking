@@ -72,8 +72,8 @@ async function bootstrap() {
     SwaggerModule.setup('docs', app, document);
   }
 
-  await app.listen(port);
-  logger.log(`PlayHub Backend is running on: http://localhost:${port}/${apiPrefix}`);
+  await app.listen(port, '0.0.0.0');
+  logger.log(`PlayHub Backend is running on: http://0.0.0.0:${port}/${apiPrefix}`);
   if (configService.get('NODE_ENV') !== 'production') {
     logger.log(`API Documentation available at: http://localhost:${port}/docs`);
   }

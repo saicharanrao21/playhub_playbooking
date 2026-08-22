@@ -49,7 +49,15 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
+  RAZORPAY_WEBHOOK_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
   STRIPE_SECRET_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  STRIPE_WEBHOOK_SECRET?: string;
 }
 
 export function validate(config: Record<string, any>) {

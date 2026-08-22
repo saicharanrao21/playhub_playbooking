@@ -39,5 +39,42 @@ class EnvConfig {
     enableLogging: false,
     enableAnalytics: true,
   );
-}
 
+  factory EnvConfig.fromEnvironment() {
+    const env = String.fromEnvironment('APP_ENV', defaultValue: 'dev');
+    const apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+
+    late EnvConfig config;
+    switch (env) {
+      case 'local':
+        config = EnvConfig.local();
+        break;
+      case 'staging':
+        config = EnvConfig.staging();
+        break;
+      case 'prod':
+        config = EnvConfig.prod();
+        break;
+      default:
+        config = EnvConfig.dev();
+    }
+
+    return config.copyWith(
+      apiBaseUrl: apiBaseUrl.isNotEmpty ? apiBaseUrl : null,
+    );
+  }
+
+  EnvConfig copyWith({
+    AppEnvironment? environment,
+    String? apiBaseUrl,
+    bool? enableLogging,
+    bool? enableAnalytics,
+  }) {
+    return EnvConfig(
+      environment: environment ?? this.environment,
+      apiBaseUrl: apiBaseUrl ?? this.apiBaseUrl,
+      enableLogging: enableLogging ?? this.enableLogging,
+      enableAnalytics: enableAnalytics ?? this.enableAnalytics,
+    );
+  }
+}

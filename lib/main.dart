@@ -5,9 +5,9 @@ import 'app/bootstrap/bootstrap.dart';
 import 'core/config/env_config.dart';
 
 void main() async {
-  // Determine environment from build args or default to dev
+  // Determine environment from build args
   final container = await Bootstrap.createContainer(
-    config: EnvConfig.dev(), // Future: load from --dart-define
+    config: EnvConfig.fromEnvironment(),
   );
 
   runApp(
