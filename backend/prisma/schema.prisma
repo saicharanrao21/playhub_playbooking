@@ -133,6 +133,21 @@ model Organization {
   @@map("organizations")
 }
 
+model City {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  state     String?
+  country   String   @default("India")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venues Venue[]
+
+  @@map("cities")
+}
+
 model Membership {
   id             String   @id @default(uuid())
   userId         String
@@ -194,6 +209,7 @@ model Business {
 model Venue {
   id          String      @id @default(uuid())
   businessId  String
+  cityId      String?
   name        String
   slug        String
   description String?
@@ -210,31 +226,55 @@ model Venue {
   updatedAt   DateTime    @updatedAt
 
   business       Business         @relation(fields: [businessId], references: [id])
+  cityRel        City?            @relation(fields: [cityId], references: [id])
   facilities     Facility[]
   operatingHours OperatingHours[]
 
   @@unique([businessId, slug])
   @@index([businessId])
+  @@index([cityId])
   @@index([city])
   @@index([status])
   @@map("venues")
 }
 
 model Category {
-  id   String @id @default(uuid())
-  name String @unique
-  slug String @unique
-  icon String?
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  icon      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
+  activities Activity[]
   facilities Facility[]
 
   @@map("categories")
+}
+
+model Activity {
+  id         String   @id @default(uuid())
+  categoryId String
+  name       String
+  slug       String
+  icon       String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category   Category   @relation(fields: [categoryId], references: [id])
+  facilities Facility[]
+
+  @@unique([categoryId, slug])
+  @@map("activities")
 }
 
 model Facility {
   id           String         @id @default(uuid())
   venueId      String
   categoryId   String
+  activityId   String?
   name         String
   description  String?
   capacity     Int?
@@ -245,12 +285,14 @@ model Facility {
 
   venue             Venue               @relation(fields: [venueId], references: [id])
   category          Category            @relation(fields: [categoryId], references: [id])
+  activity          Activity?           @relation(fields: [activityId], references: [id])
   availabilityBlocks AvailabilityBlock[]
   pricingRules      PricingRule[]
   bookings          Booking[]
 
   @@index([venueId])
   @@index([categoryId])
+  @@index([activityId])
   @@index([status])
   @@map("facilities")
 }

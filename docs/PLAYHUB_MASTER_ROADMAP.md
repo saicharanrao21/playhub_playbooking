@@ -6,10 +6,10 @@
 ## TIER 1 — REQUIRED FOR FIRST REAL LAUNCH (MVP+)
 ### Phase 43: Dynamic Discovery Foundation
 **Objective**: Replace all remaining dummy discovery data.
-- **Backend**: `Cities` and `Activities` modules.
-- **Database**: Add `City` model and seed data.
-- **Flutter**: Update `HomeScreen` and `Discovery` flows to use real backend APIs.
-- **Priority**: High (Launch Blocker)
+- **Backend**: `Cities`, `Categories`, and `Activities` modules. ✅
+- **Database**: Add `City` and `Activity` models and seed data. ✅
+- **Flutter**: Update `HomeScreen` and `Discovery` flows to use real backend APIs. ✅
+- **Priority**: High (Completed)
 
 ### Phase 44: Production Media Infrastructure
 **Objective**: Display real venue images.

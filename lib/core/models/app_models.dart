@@ -38,68 +38,134 @@ class Venue {
   final String id;
   final String businessId;
   final String name;
-  final String description;
+  final String? description;
   final String address;
   final String city;
-  final double latitude;
-  final double longitude;
+  final String? cityId;
+  final double? latitude;
+  final double? longitude;
   final List<String> imageUrls;
   final List<String> amenities;
   final double rating;
   final int reviewCount;
-  final String categoryId;
+  final String? categoryId;
   final List<Facility>? facilities; 
 
   Venue({
     required this.id,
     required this.businessId,
     required this.name,
-    required this.description,
+    this.description,
     required this.address,
     required this.city,
-    required this.latitude,
-    required this.longitude,
+    this.cityId,
+    this.latitude,
+    this.longitude,
     required this.imageUrls,
     required this.amenities,
     required this.rating,
     required this.reviewCount,
-    required this.categoryId,
+    this.categoryId,
     this.facilities,
   });
+
+  factory Venue.fromJson(Map<String, dynamic> json) {
+    return Venue(
+      id: json['id'],
+      businessId: json['businessId'],
+      name: json['name'],
+      description: json['description'],
+      address: json['address'],
+      city: json['city'] ?? '',
+      cityId: json['cityId'],
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      imageUrls: (json['imageUrls'] as List?)?.map((e) => e as String).toList() ?? [],
+      amenities: (json['amenities'] as List?)?.map((e) => e as String).toList() ?? [],
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      reviewCount: json['reviewCount'] ?? 0,
+      categoryId: json['categoryId'],
+      facilities: (json['facilities'] as List?)?.map((e) => Facility.fromJson(e)).toList(),
+    );
+  }
 }
 
 class Facility {
   final String id;
   final String name;
   final String? description;
+  final String? categoryId;
+  final String? activityId;
 
   Facility({
     required this.id,
     required this.name,
     this.description,
+    this.categoryId,
+    this.activityId,
   });
+
+  factory Facility.fromJson(Map<String, dynamic> json) {
+    return Facility(
+      id: json['id'],
+      name: json['name'],
+      description: json['description'],
+      categoryId: json['categoryId'],
+      activityId: json['activityId'],
+    );
+  }
 }
 
 class Activity {
   final String id;
   final String name;
-  final String categoryId;
-  final String icon;
+  final String slug;
+  final String? categoryId;
+  final String? icon;
 
   Activity({
     required this.id,
     required this.name,
-    required this.categoryId,
-    required this.icon,
+    required this.slug,
+    this.categoryId,
+    this.icon,
   });
+
+  factory Activity.fromJson(Map<String, dynamic> json) {
+    return Activity(
+      id: json['id'],
+      name: json['name'],
+      slug: json['slug'],
+      categoryId: json['categoryId'],
+      icon: json['icon'],
+    );
+  }
 }
 
 class Category {
   final String id;
   final String name;
-  final String icon;
+  final String slug;
+  final String? icon;
+  final List<Activity>? activities;
 
-  Category({required this.id, required this.name, required this.icon});
+  Category({
+    required this.id, 
+    required this.name, 
+    required this.slug,
+    this.icon,
+    this.activities,
+  });
+
+  factory Category.fromJson(Map<String, dynamic> json) {
+    return Category(
+      id: json['id'],
+      name: json['name'],
+      slug: json['slug'],
+      icon: json['icon'],
+      activities: (json['activities'] as List?)?.map((e) => Activity.fromJson(e)).toList(),
+    );
+  }
 }
 
 class Slot {
@@ -163,8 +229,24 @@ class Review {
 class City {
   final String id;
   final String name;
+  final String slug;
+  final String? state;
 
-  City({required this.id, required this.name});
+  City({
+    required this.id, 
+    required this.name,
+    required this.slug,
+    this.state,
+  });
+
+  factory City.fromJson(Map<String, dynamic> json) {
+    return City(
+      id: json['id'],
+      name: json['name'],
+      slug: json['slug'],
+      state: json['state'],
+    );
+  }
 }
 
 class Notification {

@@ -23,6 +23,9 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "start:prod:migrate": "npm run prisma:migrate:deploy && npm run start:prod"
   },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.0.0",

@@ -12,8 +12,8 @@ PlayHub is a Sports & Activity Booking Platform built on a multi-tenant NestJS b
 | **Organization Context**| Tenant switching / isolation. | ✅ Service-level enforcement.| ✅ | ✅ | ✅ | ✅ | None | PASS | High |
 | **Venue Discovery** | Browse popular venues. | ✅ Real backend data. | ✅ | ✅ | ✅ | ✅ | None | PASS | High |
 | **Venue Details** | Pricing, amenities, rules. | ✅ Integrated details. | ✅ | ✅ | ✅ | ✅ | Image placeholder| PASS | High |
-| **City Selection** | List/select operating cities. | 🟠 Architecture only. | 🟡 | 🔴 | 🔴 | 🔴 | Dummy Repository | PASS | High |
-| **Category Browsing** | Sports, Gyms, Swimming, etc. | 🟠 Architecture only. | 🟡 | 🟡 | ✅ | 🔴 | Dummy Repository | PASS | High |
+| **City Selection** | List/select operating cities. | ✅ Fully integrated with backend. | ✅ | ✅ | ✅ | ✅ | None | PASS | High |
+| **Category Browsing** | Sports, Gyms, Swimming, etc. | ✅ Fully integrated with backend. | ✅ | ✅ | ✅ | ✅ | None | PASS | High |
 | **Availability / Slots** | Real-time selected date. | ✅ Dynamic generation. | ✅ | ✅ | ✅ | ✅ | None | PASS | High |
 | **Booking Creation** | Pending state & IDOR check. | ✅ Hardened with concurrency.| ✅ | ✅ | ✅ | ✅ | None | PASS | High |
 | **Payment Orders** | Razorpay/Stripe initiation. | 🔵 Code ready (Driver level). | ✅ | ✅ | ✅ | 🟡 | Mock Driver | PASS | High |
@@ -21,7 +21,7 @@ PlayHub is a Sports & Activity Booking Platform built on a multi-tenant NestJS b
 | **Cancellation** | Authorized user refund path. | ✅ Integrated & hardened. | ✅ | ✅ | ✅ | ✅ | None | PASS | High |
 | **Rescheduling** | Date/Time shift with pricing. | ✅ Integrated & hardened. | ✅ | ✅ | ✅ | ✅ | None | PASS | High |
 | **In-App Notifications**| Booking alerts & success. | ✅ Integrated listeners. | ✅ | ✅ | ✅ | ✅ | None | PASS | Med |
-| **Search & Filters** | Search by name/city/date. | 🔴 Gaps identified. | 🔴 | 🔴 | 🔴 | 🔴 | Placeholder Scrn | PASS | Med |
+| **Search & Filters** | Search by name/city/date. | ✅ Fully integrated with backend. | ✅ | ✅ | ✅ | ✅ | None | PASS | Med |
 | **Business Dashboard** | Revenue, bookings, venues. | 🔴 UI shell only. | 🟡 | 🔴 | 🔴 | 🔴 | Static Data | PASS | Low |
 | **Admin Dashboard** | Oversight & management. | 🔴 UI shell only. | 🟡 | 🔴 | 🔴 | 🔴 | Static Data | PASS | Low |
 

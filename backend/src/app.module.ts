@@ -14,6 +14,10 @@ import { AvailabilityModule } from './availability/availability.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { PaymentsModule } from './payments/payments.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { CitiesModule } from './cities/cities.module';
+import { CategoriesModule } from './categories/categories.module';
+import { ActivitiesModule } from './activities/activities.module';
+import { DiscoveryModule } from './discovery/discovery.module';
 import { HealthController } from './health/health.controller';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
@@ -48,6 +52,10 @@ import { validate } from './common/config/env.validation';
     BookingsModule,
     PaymentsModule,
     NotificationsModule,
+    CitiesModule,
+    CategoriesModule,
+    ActivitiesModule,
+    DiscoveryModule,
   ],
   controllers: [HealthController],
   providers: [

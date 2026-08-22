@@ -35,6 +35,7 @@ class Business {
 class Venue {
   final String id;
   final String businessId;
+  final String? cityId;
   final String name;
   final String slug;
   final String? description;
@@ -53,6 +54,7 @@ class Venue {
   const Venue({
     required this.id,
     required this.businessId,
+    this.cityId,
     required this.name,
     required this.slug,
     this.description,
@@ -73,6 +75,7 @@ class Venue {
     return Venue(
       id: json['id'],
       businessId: json['businessId'],
+      cityId: json['cityId'],
       name: json['name'],
       slug: json['slug'],
       description: json['description'],
@@ -98,6 +101,7 @@ class Facility {
   final String id;
   final String venueId;
   final String categoryId;
+  final String? activityId;
   final String name;
   final String? description;
   final int? capacity;
@@ -107,6 +111,7 @@ class Facility {
     required this.id,
     required this.venueId,
     required this.categoryId,
+    this.activityId,
     required this.name,
     this.description,
     this.capacity,
@@ -118,6 +123,7 @@ class Facility {
       id: json['id'],
       venueId: json['venueId'],
       categoryId: json['categoryId'],
+      activityId: json['activityId'],
       name: json['name'],
       description: json['description'],
       capacity: json['capacity'],

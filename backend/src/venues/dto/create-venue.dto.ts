@@ -32,6 +32,11 @@ export class CreateVenueDto {
   @MaxLength(100)
   city: string;
 
+  @ApiProperty({ example: 'city-id', required: false })
+  @IsString()
+  @IsOptional()
+  cityId?: string;
+
   @ApiProperty({ example: 'Telangana' })
   @IsString()
   @IsNotEmpty()

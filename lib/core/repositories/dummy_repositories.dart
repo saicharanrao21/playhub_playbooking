@@ -3,18 +3,18 @@ import 'interfaces.dart';
 
 class DummyData {
   static final categories = [
-    Category(id: '1', name: 'Cricket', icon: 'sports_cricket'),
-    Category(id: '2', name: 'Football', icon: 'sports_soccer'),
-    Category(id: '3', name: 'Badminton', icon: 'sports_tennis'),
-    Category(id: '4', name: 'Swimming', icon: 'pool'),
-    Category(id: '5', name: 'Gym', icon: 'fitness_center'),
+    Category(id: '1', name: 'Cricket', slug: 'cricket', icon: 'sports_cricket'),
+    Category(id: '2', name: 'Football', slug: 'football', icon: 'sports_soccer'),
+    Category(id: '3', name: 'Badminton', slug: 'badminton', icon: 'sports_tennis'),
+    Category(id: '4', name: 'Swimming', slug: 'swimming', icon: 'pool'),
+    Category(id: '5', name: 'Gym', slug: 'gym', icon: 'fitness_center'),
   ];
 
   static final cities = [
-    City(id: '1', name: 'Hyderabad'),
-    City(id: '2', name: 'Bangalore'),
-    City(id: '3', name: 'Mumbai'),
-    City(id: '4', name: 'Delhi'),
+    City(id: '1', name: 'Hyderabad', slug: 'hyderabad'),
+    City(id: '2', name: 'Bangalore', slug: 'bangalore'),
+    City(id: '3', name: 'Mumbai', slug: 'mumbai'),
+    City(id: '4', name: 'Delhi', slug: 'delhi'),
   ];
 
   static final venues = [

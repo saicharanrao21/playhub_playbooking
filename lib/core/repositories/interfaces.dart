@@ -27,3 +27,16 @@ abstract class ICategoryRepository {
 abstract class ICityRepository {
   Future<List<City>> getCities();
 }
+
+abstract class IActivityRepository {
+  Future<List<Activity>> getActivities({String? categoryId});
+}
+
+abstract class IDiscoveryRepository {
+  Future<List<Venue>> discoverVenues({
+    String? query,
+    String? cityId,
+    String? categoryId,
+    String? activityId,
+  });
+}

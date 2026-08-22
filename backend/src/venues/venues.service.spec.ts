@@ -79,4 +79,15 @@ describe('VenuesService (Domain Isolation)', () => {
         where: { id: 'v1', business: { organizationId: 'org1' } }
      }));
   });
+
+  it('should discover active venues with filters', async () => {
+    mockPrisma.venue.findMany.mockResolvedValue([{ id: 'v1' }]);
+    mockPrisma.venue.count.mockResolvedValue(1);
+
+    const result = await service.discover({ query: 'arena', skip: 0, limit: 10 });
+    expect(result.items).toHaveLength(1);
+    expect(mockPrisma.venue.findMany).toHaveBeenCalledWith(expect.objectContaining({
+       where: expect.objectContaining({ status: 'ACTIVE' })
+    }));
+  });
 });

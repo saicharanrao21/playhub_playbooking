@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateVenueDto } from './dto/create-venue.dto';
 import { UpdateVenueDto } from './dto/update-venue.dto';
 import { OperatingHoursDto } from './dto/operating-hours.dto';
+import { VenueStatus, FacilityStatus } from '@prisma/client';
+import { DiscoveryFiltersDto } from '../discovery/dto/discovery-filters.dto';
 
 @Injectable()
 export class VenuesService {
@@ -40,6 +42,51 @@ export class VenuesService {
     });
   }
 
+  async discover(filters: DiscoveryFiltersDto) {
+    const where = {
+      status: VenueStatus.ACTIVE,
+      ...(filters.cityId ? { cityId: filters.cityId } : {}),
+      ...(filters.query
+        ? {
+            OR: [
+              { name: { contains: filters.query, mode: 'insensitive' as const } },
+              { description: { contains: filters.query, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+      ...(filters.categoryId || filters.activityId
+        ? {
+            facilities: {
+              some: {
+                status: FacilityStatus.ACTIVE,
+                ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+                ...(filters.activityId ? { activityId: filters.activityId } : {}),
+              },
+            },
+          }
+        : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.venue.findMany({
+        where,
+        include: {
+          facilities: {
+            where: { status: FacilityStatus.ACTIVE },
+            include: { category: true, activity: true },
+          },
+          cityRel: true,
+        },
+        skip: filters.skip,
+        take: filters.limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.venue.count({ where }),
+    ]);
+
+    return { items, total };
+  }
+
   async findAll(organizationId: string, filters: { businessId?: string; skip?: number; take?: number }) {
     const [items, total] = await Promise.all([
       this.prisma.venue.findMany({
@@ -74,8 +121,12 @@ export class VenuesService {
         },
       },
       include: {
-        facilities: true,
+        facilities: {
+          where: { status: FacilityStatus.ACTIVE },
+          include: { category: true, activity: true },
+        },
         operatingHours: true,
+        cityRel: true,
       },
     });
 

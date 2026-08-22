@@ -16,6 +16,8 @@ import '../../features/bookings/presentation/screens/booking_review_screen.dart'
 import '../../features/bookings/presentation/screens/reschedule_screen.dart';
 import '../../features/availability/presentation/screens/availability_screen.dart';
 
+import '../../features/search/presentation/screens/search_screen.dart';
+
 // Placeholder for screens not yet implemented in detail
 class PlaceholderScreen extends StatelessWidget {
   final String title;
@@ -77,8 +79,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/search',
         name: 'search',
-        builder: (context, state) =>
-            const PlaceholderScreen(title: 'Search Results'),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return SearchScreen(initialCategoryId: extra?['categoryId']);
+        },
       ),
       GoRoute(
         path: '/venue/:id',

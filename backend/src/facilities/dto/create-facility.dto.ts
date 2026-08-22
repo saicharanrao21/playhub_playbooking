@@ -19,6 +19,11 @@ export class CreateFacilityDto {
   @IsNotEmpty()
   categoryId: string;
 
+  @ApiProperty({ example: 'activity-id', required: false })
+  @IsString()
+  @IsOptional()
+  activityId?: string;
+
   @ApiProperty({ example: 10 })
   @IsInt()
   @Min(1)
