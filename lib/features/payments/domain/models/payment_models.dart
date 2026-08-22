@@ -8,6 +8,7 @@ class PaymentOrder {
   final String currency;
   final PaymentStatus status;
   final String providerOrderId;
+  final PaymentProvider provider;
 
   const PaymentOrder({
     required this.id,
@@ -16,6 +17,7 @@ class PaymentOrder {
     required this.currency,
     required this.status,
     required this.providerOrderId,
+    required this.provider,
   });
 
   factory PaymentOrder.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class PaymentOrder {
       currency: json['currency'],
       status: PaymentStatus.values.byName(json['status'].toString().toLowerCase()),
       providerOrderId: json['providerOrderId'],
+      provider: PaymentProvider.values.byName(json['provider'].toString().toLowerCase()),
     );
   }
 }

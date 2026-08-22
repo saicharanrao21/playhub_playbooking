@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/booking_provider.dart';
 import '../../../payments/data/payment_repository.dart';
+import '../../../payments/domain/models/payment_models.dart';
 import '../../../../core/security/auth_provider.dart';
 import '../../../../app/bootstrap/bootstrap.dart';
 
@@ -59,15 +60,18 @@ class _BookingReviewScreenState extends ConsumerState<BookingReviewScreen> {
         throw Exception('Failed to initiate payment order');
       }
 
-      // 3. Trigger Payment Provider (Simulated Success for now)
-      // In a real implementation, this would call Razorpay/Stripe SDK.
-      // After SDK success, we call verify.
-      
-      final verified = await paymentRepo.verifyPayment(
-        providerOrderId: order.id,
-        providerPaymentId: 'pay_simulated_${booking.id}',
-        signature: 'valid_simulated_sig',
-      );
+      // 3. Trigger Payment Provider
+      bool verified = false;
+      if (order.provider == PaymentProvider.mock) {
+        verified = await paymentRepo.verifyPayment(
+          providerOrderId: order.id,
+          providerPaymentId: 'pay_simulated_${booking.id}',
+          signature: 'valid_simulated_sig',
+        );
+      } else {
+        // In a real implementation, this would call Razorpay/Stripe SDK.
+        throw Exception('Real payment integration for ${order.provider.name} required external SDK setup.');
+      }
 
       if (mounted) {
         if (verified) {
