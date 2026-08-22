@@ -1,66 +1,68 @@
-# PlayHub Project Baseline & Product Audit
+# PlayHub Master Baseline & Product Gap Audit
 
-## 1. Original Product Vision vs. Current Implementation
+## 1. Executive Summary
+PlayHub is a Sports & Activity Booking Platform built on a multi-tenant NestJS backend and a feature-first Flutter mobile application. As of Phase 41, the core "Booking & Payment" lifecycle is technically complete and hardened. However, the "Customer Discovery" and "Administrative Management" pillars are currently reliant on dummy data and static UI components.
 
-| Feature Area | Original Intention | Current Implementation |
-|--------------|-------------------|------------------------|
-| **Authentication** | Registration, Login, Session restoration. | ✅ Fully end-to-end. Hardened JWT & Session revocation. |
-| **Discovery** | Browse by City, Category, Activity. Search. | 🟡 Partial. Venues work, but Cities/Categories use dummy data. |
-| **Venues & Facilities** | Detailed views, management by owners. | ✅ Fully integrated with backend. |
-| **Availability** | Real-time slots, operating hours, blocks. | ✅ Dynamic slot generation implemented and hardened. |
-| **Booking** | Select slot, create pending, confirm on pay. | ✅ Fully end-to-end with concurrency protection. |
-| **Payments** | Razorpay/Stripe integration. | 🔵 Code ready, requires external credentials. |
-| **Post-Booking** | History, Cancellation, Rescheduling. | ✅ Fully end-to-end with integrity guards. |
-| **Notifications** | In-app, Email, SMS, Push. | 🟡 In-app complete. Email/SMS/Push missing. |
-| **Dashboards** | Customer, Business Owner, Admin views. | 🟡 UI exists for all, Admin/Business limited to basic management. |
+## 2. Comprehensive Feature Matrix
 
-## 2. Technical Architecture Audit
+| Feature | Original Intention | Current Implementation | Flutter Status | Backend Status | Database Status | E2E Status | Mock/Placeholder | Security | Priority |
+|:---|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---|
+| **Registration / Login** | Full user onboarding. | ✅ End-to-end complete. | ✅ | ✅ | ✅ | ✅ | None | PASS | High |
+| **Session Management** | Persistent auth & refresh. | ✅ Hardened JWT & Refresh. | ✅ | ✅ | ✅ | ✅ | None | PASS | High |
+| **Organization Context**| Tenant switching / isolation. | ✅ Service-level enforcement.| ✅ | ✅ | ✅ | ✅ | None | PASS | High |
+| **Venue Discovery** | Browse popular venues. | ✅ Real backend data. | ✅ | ✅ | ✅ | ✅ | None | PASS | High |
+| **Venue Details** | Pricing, amenities, rules. | ✅ Integrated details. | ✅ | ✅ | ✅ | ✅ | Image placeholder| PASS | High |
+| **City Selection** | List/select operating cities. | 🟠 Architecture only. | 🟡 | 🔴 | 🔴 | 🔴 | Dummy Repository | PASS | High |
+| **Category Browsing** | Sports, Gyms, Swimming, etc. | 🟠 Architecture only. | 🟡 | 🟡 | ✅ | 🔴 | Dummy Repository | PASS | High |
+| **Availability / Slots** | Real-time selected date. | ✅ Dynamic generation. | ✅ | ✅ | ✅ | ✅ | None | PASS | High |
+| **Booking Creation** | Pending state & IDOR check. | ✅ Hardened with concurrency.| ✅ | ✅ | ✅ | ✅ | None | PASS | High |
+| **Payment Orders** | Razorpay/Stripe initiation. | 🔵 Code ready (Driver level). | ✅ | ✅ | ✅ | 🟡 | Mock Driver | PASS | High |
+| **Payment Webhooks** | Sync with provider events. | 🔵 Code ready. | 🔴 | ✅ | ✅ | 🟡 | Manual Verification| PASS | High |
+| **Cancellation** | Authorized user refund path. | ✅ Integrated & hardened. | ✅ | ✅ | ✅ | ✅ | None | PASS | High |
+| **Rescheduling** | Date/Time shift with pricing. | ✅ Integrated & hardened. | ✅ | ✅ | ✅ | ✅ | None | PASS | High |
+| **In-App Notifications**| Booking alerts & success. | ✅ Integrated listeners. | ✅ | ✅ | ✅ | ✅ | None | PASS | Med |
+| **Search & Filters** | Search by name/city/date. | 🔴 Gaps identified. | 🔴 | 🔴 | 🔴 | 🔴 | Placeholder Scrn | PASS | Med |
+| **Business Dashboard** | Revenue, bookings, venues. | 🔴 UI shell only. | 🟡 | 🔴 | 🔴 | 🔴 | Static Data | PASS | Low |
+| **Admin Dashboard** | Oversight & management. | 🔴 UI shell only. | 🟡 | 🔴 | 🔴 | 🔴 | Static Data | PASS | Low |
 
-### Backend (NestJS + Prisma)
-- **Multi-tenancy**: 🔒 Strong isolation via `organizationId` enforced in services.
-- **Security**: 🔒 RBAC and Permissions implemented via `OrganizationGuard` and `PermissionsGuard`.
-- **Integrity**: 🔒 `Serializable` transactions for critical lifecycle operations.
-- **Environment**: ✅ Type-safe validation on startup. Production-ready Dockerfile.
+## 3. Product Vision Reconstruction
+PlayHub was originally planned as a clean-architecture mobile-first platform.
+- **Android/iOS**: Primary targets (Production Ready).
+- **Web/Desktop**: Supported via Flutter (Responsive shell exists).
+- **Original Scope**: Registration -> Discovery -> Slot Selection -> Payment -> SMS/Email Confirmation -> History -> Reviews.
 
-### Frontend (Flutter + Riverpod)
-- **Architecture**: Clean Architecture (Feature-first).
-- **State Management**: Riverpod `AsyncValue` used for resilient UI updates.
-- **Networking**: Hardened Dio client with automated error mapping and token refresh.
-- **Responsiveness**: UI adapted for mobile; basic support for larger screens.
+## 4. Technical Audit (Evidence-Based)
+### Gaps Identified
+- **City & Activity Domain**: Genuine implementation gap. No APIs exist for listing or managing cities. Activity relationships are absent from the database.
+- **Search Foundation**: Missing. No dedicated search endpoint or filtering logic in the backend.
+- **Media Strategy**: BLOCKED. The app relies on NetworkImage URLs but has no object storage (S3) or upload path for owners.
+- **External Communications**: MISSING. Logic exists to emit events, but no drivers for SMTP, Twilio, or Push exist.
 
-## 3. Implementation Gaps & Technical Debt
+### Hardening results
+- **Authorization**: PASS. Every service re-validates `organizationId` from the context.
+- **Data Integrity**: PASS. `Serializable` transactions protect against double-booking and double-refunds.
+- **Input Validation**: PASS. All DTOs use `class-validator` with strict rules.
 
-### Production Blockers (High Priority)
-1. **External Config**: `DATABASE_URL` and `JWT_SECRET` must be set in production environment.
-2. **Payment Keys**: Real Razorpay/Stripe keys needed to activate transactional flows.
-3. **SSL/HTTPS**: Required for all production traffic.
+## 5. Security Summary
+- **Authentication**: JWT Access (15m) and Refresh (7d) tokens with rotation and revocation.
+- **Tenant Isolation**: Strict `where` clause injection in all Prisma queries.
+- **IDOR**: Prevented by checking `userId` on all owner-sensitive booking/payment lookups.
+- **Secrets**: Redacted in logs; centralized in ConfigService; validated on startup.
 
-### Major Implementation Gaps
-- **Cities & Categories**: Currently hardcoded in Flutter (`dummy_repositories.dart`). Backend models exist for `Category` but lack APIs. `City` model is missing from DB.
-- **Search & Filtering**: Search Results screen is a placeholder. No full-text search implemented.
-- **Communication**: No integration with SMTP (Email), Twilio (SMS), or Firebase (Push).
-- **Media Storage**: No production strategy for images. Local placeholder used in UI.
+## 6. Infrastructure Readiness
+- **Database**: PostgreSQL with Prisma. (Ready)
+- **Containerization**: Multi-stage Dockerfile with non-root user. (Ready)
+- **CI/CD**: GitHub Actions for automated verification. (Ready)
+- **Deployment**: `DEPLOYMENT.md` covers staging preflight and smoke tests. (Ready)
 
-### Technical Debt
-- **Placeholder Screens**: `Search Results` and `Booking Confirmation` (re-confirmation) need real UI.
-- **Dummy Data**: Discovery flow relies on static lists.
+---
 
-## 4. Master Roadmap (Tiers)
+## 7. Strategic Decisions
+1. **City/Category/Activity**: Must move from `DummyRepository` to `RemoteRepository` using a new backend discovery module.
+2. **Search**: Implement PostgreSQL full-text search before considering external search engines.
+3. **Storage**: Integrate AWS S3 or MinIO for real venue images.
+4. **Analytics**: Post-launch priority; currently handled via `AuditLog` in database.
 
-### Tier 0 — Critical Defects & Fixes
-- None identified in Phase 42 audit. System state is stable.
-
-### Tier 1 — Required for First Real Launch (MVP+)
-1. **Dynamic Discovery**: Implement `Categories` and `Cities` backend modules.
-2. **Venue Images**: Implement File Storage (S3/Object Storage) for venue and facility images.
-3. **Real Payments**: Configure staging/production provider credentials.
-
-### Tier 2 — High-Value Post-Launch
-1. **Advanced Notifications**: Email and Push notification drivers.
-2. **Reviews & Ratings**: Customer feedback loop.
-3. **Search Optimization**: Full-text search and map-based discovery.
-
-## 5. Next Implementation Recommendation
-
-**Phase 43: Dynamic Discovery & Media Infrastructure**
-*Reason*: To move beyond a "demo" feel, the app must fetch Cities and Categories from the server and display real images rather than placeholders. This completes the "Customer Discovery" flow which is currently the biggest end-to-end gap.
+---
+**Authoritative Technical Baseline Established (Aug 22, 2026)**
+**Status**: CODE READY for Staging Configuration and Dynamic Discovery expansion.

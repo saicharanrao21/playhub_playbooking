@@ -1,47 +1,51 @@
-# PlayHub Master Roadmap
+# PlayHub Master Strategic Roadmap
 
-## Phase 43: Dynamic Discovery & Media Storage
-**Objective**: Replace all remaining dummy discovery data and implement production-ready image handling.
-- **Scope**:
-  - Backend: `Cities` and `Categories` modules.
-  - Database: Add `City` model and seed data.
-  - Media: Integration with AWS S3 or compatible object storage for Venue/Facility images.
-  - Flutter: Update repositories to fetch real data; update UI to display network images.
+## TIER 0 — CRITICAL DEFECTS & HARDENING
+- None identified. Core booking and security layers are hardened.
+
+## TIER 1 — REQUIRED FOR FIRST REAL LAUNCH (MVP+)
+### Phase 43: Dynamic Discovery Foundation
+**Objective**: Replace all remaining dummy discovery data.
+- **Backend**: `Cities` and `Activities` modules.
+- **Database**: Add `City` model and seed data.
+- **Flutter**: Update `HomeScreen` and `Discovery` flows to use real backend APIs.
 - **Priority**: High (Launch Blocker)
 
-## Phase 44: Search & Advanced Filtering
-**Objective**: Enable users to find specific venues and facilities based on criteria.
-- **Scope**:
-  - Backend: Search service with support for city, category, and date filtering.
-  - Flutter: Implement the `Search Results` placeholder screen.
-- **Priority**: Medium
+### Phase 44: Production Media Infrastructure
+**Objective**: Display real venue images.
+- **Strategy**: Implement AWS S3 or compatible object storage integration.
+- **Scope**: Signed URLs for read access; Admin/Owner upload API.
+- **Priority**: High
 
-## Phase 45: Communications & External Drivers
-**Objective**: Move beyond in-app notifications to real-world alerts.
-- **Scope**:
-  - Backend: SMTP driver (Email), Twilio/Msg91 (SMS), Firebase Cloud Messaging (Push).
-  - Business Rules: Automated booking reminders and payment confirmations.
-- **Priority**: High (Operational Requirement)
+### Phase 45: Real Search & Filtering
+**Objective**: Replace `Search Results` placeholder.
+- **Implementation**: PostgreSQL full-text search. Filter by city, category, and date.
+- **Priority**: High
 
-## Phase 46: Customer Trust & Feedback
-**Objective**: Implement social proof via reviews and ratings.
-- **Scope**:
-  - Backend: `Reviews` and `Ratings` modules with anti-spam (booking validation).
-  - Database: Aggregation logic for venue ratings.
-  - Flutter: Review list and submission UI.
-- **Priority**: Medium
+## TIER 2 — HIGH-VALUE POST-LAUNCH
+### Phase 46: External Communications
+**Objective**: Move alerts outside the app.
+- **Drivers**: SMTP (Email), SMS (Twilio/Msg91), Push (FCM).
+- **Automation**: Reminders 2 hours before booking; Payment confirmation emails.
 
-## Phase 47: Advanced Business Analytics
-**Objective**: Provide value to venue owners with data insights.
-- **Scope**:
-  - Backend: Reporting service for revenue, occupancy, and popular slots.
-  - Flutter: Interactive charts on the Business Dashboard.
-- **Priority**: Low (Post-Launch)
+### Phase 47: Customer Trust Loop
+**Objective**: Social proof for venues.
+- **Scope**: Ratings and Reviews with booking-verified eligibility.
 
-## Phase 48: Platform Scale & Performance
-**Objective**: Prepare for 100k+ concurrent users.
-- **Scope**:
-  - Backend: Redis caching for availability lookups.
-  - Infrastructure: Horizontal scaling configuration.
-  - Database: Read replicas and query optimization.
-- **Priority**: Scale-Dependent
+## TIER 3 — ARCHITECT NOW / ACTIVATE LATER
+### Phase 48: Management Dashboards (V2)
+**Objective**: Fully integrate Business and Admin dashboards.
+- **Features**: Revenue tracking, member management, dispute resolution.
+
+## TIER 4 — SCALE GROWTH
+### Phase 49: Performance & Caching
+**Objective**: Handle high concurrent slot requests.
+- **Tech**: Redis caching for `AvailabilityService`.
+
+## TIER 5 — MILLION-USER EVOLUTION
+### Phase 50: Advanced Discovery & Infrastructure
+**Objective**: Global scale readiness.
+- **Tech**: Dedicated Search Engine (OpenSearch), Microservices for high-traffic modules.
+
+---
+**Next Recommended Action**: Proceed to Phase 43.
