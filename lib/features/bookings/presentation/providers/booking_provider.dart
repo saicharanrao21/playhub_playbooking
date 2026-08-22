@@ -36,8 +36,9 @@ class MyBookingsNotifier extends StateNotifier<AsyncValue<List<Booking>>> {
     try {
       await _repository.cancelBooking(id);
       await loadBookings(); 
-    } catch (e) {
-      // Log error
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 }

@@ -29,6 +29,11 @@ class AuthorizationException extends AppException {
     : super(message, 'permission_denied');
 }
 
+class NotFoundException extends AppException {
+  NotFoundException([String message = 'Resource not found'])
+    : super(message, 'not_found');
+}
+
 class ValidationException extends AppException {
   ValidationException(String message) : super(message, 'validation_error');
 }

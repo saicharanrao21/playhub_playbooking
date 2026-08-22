@@ -203,6 +203,7 @@ class DioApiClient implements IApiClient {
     if (statusCode != null) {
       if (statusCode == 401) return AuthenticationException();
       if (statusCode == 403) return AuthorizationException();
+      if (statusCode == 404) return NotFoundException();
       if (statusCode >= 500) return ServerException();
     }
 
