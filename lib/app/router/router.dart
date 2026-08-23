@@ -17,9 +17,17 @@ import '../../features/bookings/presentation/screens/reschedule_screen.dart';
 import '../../features/availability/presentation/screens/availability_screen.dart';
 
 import '../../features/venues/presentation/screens/venue_media_screen.dart';
+import '../../features/venues/presentation/screens/facility_edit_screen.dart';
+import '../../features/venues/presentation/screens/venue_edit_screen.dart';
+import '../../features/venues/presentation/screens/facility_media_screen.dart';
+import '../../features/venues/presentation/screens/facility_create_screen.dart';
+import '../../features/venues/presentation/screens/facility_management_screen.dart';
+import '../../features/venues/presentation/screens/venue_create_screen.dart';
+import '../../features/venues/presentation/screens/venue_management_screen.dart';
+import '../../features/business_dashboard/presentation/screens/organization_profile_screen.dart';
+import '../../features/admin_dashboard/presentation/screens/activity_management_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/city_management_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/category_management_screen.dart';
-import '../../features/venues/presentation/screens/venue_management_screen.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
 
 // Placeholder for screens not yet implemented in detail
@@ -163,16 +171,65 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const BusinessDashboardScreen(),
         routes: [
           GoRoute(
+            path: 'profile',
+            name: 'org_profile',
+            builder: (context, state) => const OrganizationProfileScreen(),
+          ),
+          GoRoute(
             path: 'venues',
             name: 'manage_venues',
             builder: (context, state) => const VenueManagementScreen(),
             routes: [
+              GoRoute(
+                path: 'create',
+                name: 'venue_create',
+                builder: (context, state) => const VenueCreateScreen(),
+              ),
+              GoRoute(
+                path: ':venueId/edit',
+                name: 'venue_edit',
+                builder: (context, state) => VenueEditScreen(
+                  venueId: state.pathParameters['venueId']!,
+                ),
+              ),
               GoRoute(
                 path: ':venueId/media',
                 name: 'venue_media',
                 builder: (context, state) => VenueMediaScreen(
                   venueId: state.pathParameters['venueId']!,
                 ),
+              ),
+              GoRoute(
+                path: ':venueId/facilities',
+                name: 'manage_facilities',
+                builder: (context, state) => FacilityManagementScreen(
+                  venueId: state.pathParameters['venueId']!,
+                ),
+                routes: [
+                  GoRoute(
+                    path: 'create',
+                    name: 'facility_create',
+                    builder: (context, state) => FacilityCreateScreen(
+                      venueId: state.pathParameters['venueId']!,
+                    ),
+                  ),
+                  GoRoute(
+                    path: ':facilityId/edit',
+                    name: 'facility_edit',
+                    builder: (context, state) => FacilityEditScreen(
+                      venueId: state.pathParameters['venueId']!,
+                      facilityId: state.pathParameters['facilityId']!,
+                    ),
+                  ),
+                  GoRoute(
+                    path: ':facilityId/media',
+                    name: 'facility_media',
+                    builder: (context, state) => FacilityMediaScreen(
+                      venueId: state.pathParameters['venueId']!,
+                      facilityId: state.pathParameters['facilityId']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -192,6 +249,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'categories',
             name: 'admin_categories',
             builder: (context, state) => const CategoryManagementScreen(),
+          ),
+          GoRoute(
+            path: 'activities',
+            name: 'admin_activities',
+            builder: (context, state) => const ActivityManagementScreen(),
           ),
         ],
       ),

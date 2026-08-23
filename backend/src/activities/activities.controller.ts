@@ -6,6 +6,7 @@ import { UpdateActivityDto } from './dto/update-activity.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
+import { Permissions } from '../common/constants/permissions';
 import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('activities')
@@ -15,7 +16,7 @@ export class ActivitiesController {
 
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermission('create:activity')
+  @RequirePermission(Permissions.ACTIVITY_CREATE)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new activity (Admin only)' })
   create(@Body() dto: CreateActivityDto) {
@@ -39,7 +40,7 @@ export class ActivitiesController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermission('update:activity')
+  @RequirePermission(Permissions.ACTIVITY_UPDATE)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update activity details (Admin only)' })
   update(@Param('id') id: string, @Body() dto: UpdateActivityDto) {

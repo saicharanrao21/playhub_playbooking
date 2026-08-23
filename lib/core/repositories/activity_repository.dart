@@ -19,4 +19,22 @@ class ActivityRepository implements IActivityRepository {
     }
     return [];
   }
+
+  @override
+  Future<Activity?> createActivity(Map<String, dynamic> data) async {
+    final response = await _apiClient.post('/activities', data: data);
+    if (response.isSuccess) {
+      return Activity.fromJson(response.data);
+    }
+    return null;
+  }
+
+  @override
+  Future<Activity?> updateActivity(String id, Map<String, dynamic> data) async {
+    final response = await _apiClient.patch('/activities/$id', data: data);
+    if (response.isSuccess) {
+      return Activity.fromJson(response.data);
+    }
+    return null;
+  }
 }

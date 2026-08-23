@@ -6,6 +6,7 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
+import { Permissions } from '../common/constants/permissions';
 import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('categories')
@@ -15,7 +16,7 @@ export class CategoriesController {
 
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermission('create:category')
+  @RequirePermission(Permissions.CATEGORY_CREATE)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new category (Admin only)' })
   create(@Body() dto: CreateCategoryDto) {
@@ -38,7 +39,7 @@ export class CategoriesController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermission('update:category')
+  @RequirePermission(Permissions.CATEGORY_UPDATE)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update category details (Admin only)' })
   update(@Param('id') id: string, @Body() dto: UpdateCategoryDto) {

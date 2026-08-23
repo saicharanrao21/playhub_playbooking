@@ -66,8 +66,17 @@ class BusinessDashboardScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 32),
                 const Text(
-                  'Manage Venues',
+                  'Management',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => context.push('/business-dashboard/profile'),
+                  icon: const Icon(Icons.account_balance),
+                  label: const Text('Organization Profile'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(

@@ -4,61 +4,58 @@ import '../../../../core/providers/repository_providers.dart';
 import '../../domain/models/venue_models.dart';
 import 'package:go_router/go_router.dart';
 
-final operatorVenuesProvider = FutureProvider<List<Venue>>((ref) async {
+final operatorFacilitiesProvider = FutureProvider.family<List<Facility>, String>((ref, venueId) async {
   final repo = ref.watch(venueOperatorRepositoryProvider);
-  return repo.getVenues();
+  return repo.getFacilities(venueId);
 });
 
-class VenueManagementScreen extends ConsumerWidget {
-  const VenueManagementScreen({super.key});
+class FacilityManagementScreen extends ConsumerWidget {
+  final String venueId;
+  const FacilityManagementScreen({super.key, required this.venueId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final venuesAsync = ref.watch(operatorVenuesProvider);
+    final facilitiesAsync = ref.watch(operatorFacilitiesProvider(venueId));
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manage Venues'),
+        title: const Text('Manage Facilities'),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () => context.push('/business-dashboard/venues/create'),
+            onPressed: () => context.push('/business-dashboard/venues/$venueId/facilities/create'),
           ),
         ],
       ),
-      body: venuesAsync.when(
-        data: (venues) => RefreshIndicator(
-          onRefresh: () => ref.refresh(operatorVenuesProvider.future),
-          child: venues.isEmpty
-              ? const Center(child: Text('No venues found for your organization.'))
+      body: facilitiesAsync.when(
+        data: (facilities) => RefreshIndicator(
+          onRefresh: () => ref.refresh(operatorFacilitiesProvider(venueId).future),
+          child: facilities.isEmpty
+              ? const Center(child: Text('No facilities found for this venue.'))
               : ListView.builder(
-                  itemCount: venues.length,
+                  itemCount: facilities.length,
                   itemBuilder: (context, index) {
-                    final venue = venues[index];
+                    final facility = facilities[index];
                     return Card(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: ListTile(
-                        title: Text(venue.name),
-                        subtitle: Text('${venue.city} - ${venue.status.name.toUpperCase()}'),
+                        title: Text(facility.name),
+                        subtitle: Text(facility.status.name.toUpperCase()),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
                               icon: const Icon(Icons.photo_library),
-                              onPressed: () => context.push('/business-dashboard/venues/${venue.id}/media'),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.layers),
-                              onPressed: () => context.push('/business-dashboard/venues/${venue.id}/facilities'),
+                              onPressed: () => context.push('/business-dashboard/venues/$venueId/facilities/${facility.id}/media'),
                             ),
                             IconButton(
                               icon: const Icon(Icons.edit),
-                              onPressed: () => context.push('/business-dashboard/venues/${venue.id}/edit'),
+                              onPressed: () => context.push('/business-dashboard/venues/$venueId/facilities/${facility.id}/edit'),
                             ),
                           ],
                         ),
                         onTap: () {
-                          // Navigate to edit venue screen
+                          // Navigate to edit facility
                         },
                       ),
                     );

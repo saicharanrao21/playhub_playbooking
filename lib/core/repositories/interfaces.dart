@@ -22,14 +22,20 @@ abstract class IAuthRepository {
 
 abstract class ICategoryRepository {
   Future<List<Category>> getCategories();
+  Future<Category?> createCategory(Map<String, dynamic> data);
+  Future<Category?> updateCategory(String id, Map<String, dynamic> data);
 }
 
 abstract class ICityRepository {
   Future<List<City>> getCities();
+  Future<City?> createCity(Map<String, dynamic> data);
+  Future<City?> updateCity(String id, Map<String, dynamic> data);
 }
 
 abstract class IActivityRepository {
   Future<List<Activity>> getActivities({String? categoryId});
+  Future<Activity?> createActivity(Map<String, dynamic> data);
+  Future<Activity?> updateActivity(String id, Map<String, dynamic> data);
 }
 
 abstract class IDiscoveryRepository {

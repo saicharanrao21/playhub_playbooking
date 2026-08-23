@@ -29,4 +29,11 @@ export const Permissions = {
   PAYMENT_UPDATE: 'update:payment',
 
   ORGANIZATION_SETTINGS_READ: 'read:organization_settings',
+
+  CITY_CREATE: 'create:city',
+  CITY_UPDATE: 'update:city',
+  CATEGORY_CREATE: 'create:category',
+  CATEGORY_UPDATE: 'update:category',
+  ACTIVITY_CREATE: 'create:activity',
+  ACTIVITY_UPDATE: 'update:activity',
 };

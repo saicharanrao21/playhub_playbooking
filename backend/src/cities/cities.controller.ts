@@ -6,6 +6,7 @@ import { UpdateCityDto } from './dto/update-city.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
+import { Permissions } from '../common/constants/permissions';
 import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('cities')
@@ -15,7 +16,7 @@ export class CitiesController {
 
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermission('create:city')
+  @RequirePermission(Permissions.CITY_CREATE)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new city (Admin only)' })
   create(@Body() dto: CreateCityDto) {
@@ -38,7 +39,7 @@ export class CitiesController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermission('update:city')
+  @RequirePermission(Permissions.CITY_UPDATE)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update city details (Admin only)' })
   update(@Param('id') id: string, @Body() dto: UpdateCityDto) {

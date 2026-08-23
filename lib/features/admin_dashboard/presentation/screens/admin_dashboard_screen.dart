@@ -47,6 +47,10 @@ class AdminDashboardScreen extends ConsumerWidget {
                     label: Text('Categories'),
                   ),
                   NavigationRailDestination(
+                    icon: Icon(Icons.directions_run),
+                    label: Text('Activities'),
+                  ),
+                  NavigationRailDestination(
                     icon: Icon(Icons.business),
                     label: Text('Organizations'),
                   ),
@@ -59,6 +63,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                 onDestinationSelected: (int index) {
                   if (index == 1) context.push('/admin-dashboard/cities');
                   if (index == 2) context.push('/admin-dashboard/categories');
+                  if (index == 3) context.push('/admin-dashboard/activities');
                 },
               ),
 

@@ -136,6 +136,12 @@ class DummyCategoryRepository implements ICategoryRepository {
   Future<List<Category>> getCategories() async {
     return DummyData.categories;
   }
+
+  @override
+  Future<Category?> createCategory(Map<String, dynamic> data) async => null;
+
+  @override
+  Future<Category?> updateCategory(String id, Map<String, dynamic> data) async => null;
 }
 
 class DummyCityRepository implements ICityRepository {
@@ -143,4 +149,10 @@ class DummyCityRepository implements ICityRepository {
   Future<List<City>> getCities() async {
     return DummyData.cities;
   }
+
+  @override
+  Future<City?> createCity(Map<String, dynamic> data) async => null;
+
+  @override
+  Future<City?> updateCity(String id, Map<String, dynamic> data) async => null;
 }

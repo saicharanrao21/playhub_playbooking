@@ -11,6 +11,49 @@ final adminCategoriesProvider = FutureProvider<List<Category>>((ref) async {
 class CategoryManagementScreen extends ConsumerWidget {
   const CategoryManagementScreen({super.key});
 
+  Future<void> _showCategoryDialog(BuildContext context, WidgetRef ref, [Category? category]) async {
+    final nameController = TextEditingController(text: category?.name);
+    final slugController = TextEditingController(text: category?.slug);
+    final iconController = TextEditingController(text: category?.icon);
+
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(category == null ? 'Add Category' : 'Edit Category'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name')),
+            TextField(controller: slugController, decoration: const InputDecoration(labelText: 'Slug')),
+            TextField(controller: iconController, decoration: const InputDecoration(labelText: 'Icon Name')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final repo = ref.read(categoryRepositoryProvider);
+              final data = {
+                'name': nameController.text, 
+                'slug': slugController.text,
+                'icon': iconController.text,
+              };
+              final result = category == null 
+                ? await repo.createCategory(data)
+                : await repo.updateCategory(category.id, data);
+              
+              if (result != null) {
+                ref.invalidate(adminCategoriesProvider);
+                if (context.mounted) Navigator.pop(context);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categoriesAsync = ref.watch(adminCategoriesProvider);
@@ -21,9 +64,7 @@ class CategoryManagementScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () {
-              // Show dialog to add category
-            },
+            onPressed: () => _showCategoryDialog(context, ref),
           ),
         ],
       ),
@@ -36,10 +77,10 @@ class CategoryManagementScreen extends ConsumerWidget {
               leading: Icon(_getIcon(category.icon)),
               title: Text(category.name),
               subtitle: Text(category.slug),
-              trailing: const Icon(Icons.edit),
-              onTap: () {
-                // Show edit dialog
-              },
+              trailing: IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () => _showCategoryDialog(context, ref, category),
+              ),
             );
           },
         ),

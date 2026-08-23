@@ -46,12 +46,19 @@ class VenueOperatorRepository {
 
   Future<List<Facility>> getFacilities(String venueId) async {
     final response = await _apiClient.get<List>(
-      '$_baseUrl/facilities',
-      queryParameters: {'venueId': venueId},
+      '$_baseUrl/venues/$venueId/facilities', // Consistent with standard routing
     );
     if (response.isSuccess) {
       return response.data!.map((f) => Facility.fromJson(f)).toList();
     }
     return [];
+  }
+
+  Future<Facility?> getFacility(String venueId, String facilityId) async {
+    final response = await _apiClient.get('$_baseUrl/venues/$venueId/facilities/$facilityId');
+    if (response.isSuccess) {
+      return Facility.fromJson(response.data);
+    }
+    return null;
   }
 }
