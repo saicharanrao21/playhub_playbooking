@@ -9,13 +9,14 @@ class PaymentRepository {
 
   String get _baseUrl => '/organizations/$_organizationId/payments';
 
-  Future<PaymentOrder?> createOrder(String bookingId, {PaymentProvider? provider}) async {
+  Future<PaymentOrder?> createOrder(String bookingId, {PaymentProvider? provider, String? idempotencyKey}) async {
     final response = await _apiClient.post(
       '$_baseUrl/order',
       data: {
         'bookingId': bookingId,
         'provider': provider?.name.toUpperCase(),
       },
+      headers: idempotencyKey != null ? {'x-idempotency-key': idempotencyKey} : null,
     );
 
     if (response.isSuccess) {

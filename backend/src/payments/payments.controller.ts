@@ -11,7 +11,6 @@ import { Permissions } from '../common/constants/permissions';
 import { OrganizationContext } from '../common/decorators/organization-context.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserIdentity } from '../common/interfaces/user-identity.interface';
-import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('payments')
 @Controller('organizations/:organizationId/payments')
@@ -42,7 +41,7 @@ export class PaymentsController {
 
   @Post('verify')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify a payment from provider' })
+  @ApiOperation({ summary: 'Verify a payment from provider (Client-side completion)' })
   async verifyPayment(
     @OrganizationContext() organizationId: string,
     @CurrentUser() user: UserIdentity,
@@ -70,19 +69,5 @@ export class PaymentsController {
     @Param('id') id: string,
   ) {
     return this.paymentsService.reconcilePayment(organizationId, id);
-  }
-
-  @Public()
-  @Post('webhook/:provider')
-  @ApiOperation({ summary: 'Handle payment provider webhooks' })
-  @HttpCode(HttpStatus.OK)
-  async handleWebhook(
-    @Req() req: any,
-    @Body() payload: any,
-  ) {
-    const provider = req.params.provider;
-    const signature = req.headers['x-razorpay-signature'] || req.headers['stripe-signature'];
-    const rawBody = req.rawBody?.toString();
-    return this.paymentsService.handleWebhook(provider, payload, signature, rawBody);
   }
 }

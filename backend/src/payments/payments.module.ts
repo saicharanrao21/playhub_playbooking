@@ -8,9 +8,11 @@ import { PaymentProviderFactory } from './providers/payment-provider.factory';
 import { MockPaymentProvider } from './providers/mock-payment.provider';
 import { PAYMENT_PROVIDER } from './interfaces/payment-provider.interface';
 
+import { WebhooksController } from './webhooks.controller';
+
 @Module({
   imports: [OrganizationsModule],
-  controllers: [PaymentsController],
+  controllers: [PaymentsController, WebhooksController],
   providers: [
     PaymentsService,
     RazorpayPaymentProvider,

@@ -164,8 +164,6 @@ export class PaymentsService {
     if (provider.verifyCheckout) {
       isValid = await provider.verifyCheckout(dto, amountInMinorUnits);
     } else {
-      // Fallback for providers where we only have a signature
-      // Note: for real providers we should always use an authoritative check
       isValid = provider.verifyWebhookSignature(JSON.stringify(dto), dto.signature);
     }
 
@@ -195,7 +193,6 @@ export class PaymentsService {
         }
       });
 
-      // Update Booking record only if not in a terminal/final state
       const updatedBooking = await tx.booking.update({
         where: {
           id: payment.bookingId,
@@ -205,7 +202,7 @@ export class PaymentsService {
           status: BookingStatus.CONFIRMED,
         }
       }).catch(() => {
-        this.logger.warn(`Authoritative confirmation ignored: Booking ${payment.bookingId} is in status ${payment.booking.status}`);
+        this.logger.warn(`Authoritative confirmation ignored: Booking ${payment.bookingId} is already ${payment.booking.status}`);
         return null;
       });
 
@@ -241,7 +238,6 @@ export class PaymentsService {
     const pType = providerType.toUpperCase() as PaymentProvider;
     const provider = this.providerFactory.getProvider(pType);
 
-    // Use rawBody if available for signature verification, otherwise fallback to stringified payload
     const bodyToVerify = rawBody || JSON.stringify(payload);
     const isValid = provider.verifyWebhookSignature(bodyToVerify, signature);
 
@@ -255,7 +251,7 @@ export class PaymentsService {
 
     // 1. Webhook Idempotency Check
     const existingEvent = await this.prisma.paymentWebhookEvent.findUnique({
-        where: { providerEventId }
+        where: { provider_providerEventId: { provider: pType, providerEventId } }
     });
     if (existingEvent) {
         return { status: 'ignored', reason: 'Duplicate event' };
@@ -336,7 +332,6 @@ export class PaymentsService {
 
     // Handle Refund webhooks
     if (['refund.processed', 'charge.refunded'].includes(eventType)) {
-       // Logic for refunds...
        const payment = await this.prisma.payment.findFirst({
         where: {
           OR: [
@@ -411,9 +406,7 @@ export class PaymentsService {
 
       const providerStatus = await provider.getOrderStatus(payment.providerOrderId!);
 
-      if (providerStatus === 'paid') {
-          // Trigger authoritative capture logic locally
-          // (Simulate a verify or webhook processing for this specific record)
+      if (providerStatus === 'paid' || providerStatus === 'succeeded') {
           return this.prisma.$transaction(async (tx) => {
               const updated = await tx.payment.update({
                   where: { id: paymentId },
@@ -424,7 +417,7 @@ export class PaymentsService {
                   data: { status: BookingStatus.CONFIRMED }
               }).catch(() => null);
               return updated;
-          });
+          }, { isolationLevel: 'Serializable' });
       }
 
       return payment;
@@ -447,10 +440,9 @@ export class PaymentsService {
     const provider = this.providerFactory.getProvider(payment.provider);
 
     const updatedPayment = await this.prisma.$transaction(async (tx) => {
-      // Re-verify status inside transaction
       const latest = await tx.payment.findUnique({ where: { id: paymentId } });
       if (latest.status === PaymentStatus.REFUNDED) {
-         return null; // Already refunded
+         return null;
       }
 
       try {
@@ -487,6 +479,6 @@ export class PaymentsService {
       return updatedPayment;
     }
 
-    return payment; // Already refunded
+    return payment;
   }
 }
