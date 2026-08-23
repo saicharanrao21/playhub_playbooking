@@ -3,11 +3,14 @@ import '../../app/bootstrap/bootstrap.dart';
 import '../security/auth_provider.dart';
 import '../repositories/interfaces.dart';
 import '../../features/venues/data/venue_repository.dart';
+import '../../features/venues/data/venue_operator_repository.dart';
 import '../repositories/city_repository.dart';
 import '../repositories/category_repository.dart';
 import '../repositories/activity_repository.dart';
 import '../repositories/discovery_repository.dart';
 import '../repositories/media_repository.dart';
+import '../../features/business_dashboard/data/dashboard_repository.dart';
+import '../../features/admin_dashboard/data/admin_repository.dart';
 
 final venueRepositoryProvider = Provider<IVenueRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
@@ -39,4 +42,20 @@ final mediaRepositoryProvider = Provider<MediaRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   final orgId = ref.watch(activeOrganizationProvider) ?? '';
   return MediaRepository(apiClient, orgId);
+});
+
+final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return DashboardRepository(apiClient);
+});
+
+final adminRepositoryProvider = Provider<AdminRepository>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return AdminRepository(apiClient);
+});
+
+final venueOperatorRepositoryProvider = Provider<VenueOperatorRepository>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  final orgId = ref.watch(activeOrganizationProvider) ?? '';
+  return VenueOperatorRepository(apiClient, orgId);
 });

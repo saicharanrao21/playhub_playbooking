@@ -1,6 +1,7 @@
-import { Controller, Get, UseGuards, Param, Query } from '@nestjs/common';
+import { Controller, Get, Patch, Body, UseGuards, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { OrganizationsService } from './organizations.service';
+import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
@@ -9,6 +10,7 @@ import { RequirePermission } from '../common/decorators/require-permission.decor
 import { Permissions } from '../common/constants/permissions';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserIdentity } from '../common/interfaces/user-identity.interface';
+import { OrganizationContext } from '../common/decorators/organization-context.decorator';
 
 @ApiTags('organizations')
 @Controller('organizations')
@@ -24,6 +26,26 @@ export class OrganizationsController {
       skip: pagination.skip,
       take: pagination.limit,
     });
+  }
+
+  @Get('dashboard/stats')
+  @UseGuards(OrganizationGuard)
+  @ApiHeader({ name: 'x-organization-id', required: true })
+  @ApiOperation({ summary: 'Get organization dashboard summary' })
+  async getDashboardStats(@OrganizationContext() organizationId: string) {
+    return this.organizationsService.getDashboardStats(organizationId);
+  }
+
+  @Patch(':organizationId')
+  @UseGuards(OrganizationGuard, PermissionsGuard)
+  @RequirePermission(Permissions.ORGANIZATION_UPDATE)
+  @ApiHeader({ name: 'x-organization-id', required: true })
+  @ApiOperation({ summary: 'Update organization details' })
+  async update(
+    @Param('organizationId') id: string,
+    @Body() dto: UpdateOrganizationDto,
+  ) {
+    return this.organizationsService.update(id, dto);
   }
 
   @Get(':organizationId/my-profile')

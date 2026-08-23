@@ -16,6 +16,10 @@ import '../../features/bookings/presentation/screens/booking_review_screen.dart'
 import '../../features/bookings/presentation/screens/reschedule_screen.dart';
 import '../../features/availability/presentation/screens/availability_screen.dart';
 
+import '../../features/venues/presentation/screens/venue_media_screen.dart';
+import '../../features/admin_dashboard/presentation/screens/city_management_screen.dart';
+import '../../features/admin_dashboard/presentation/screens/category_management_screen.dart';
+import '../../features/venues/presentation/screens/venue_management_screen.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
 
 // Placeholder for screens not yet implemented in detail
@@ -157,11 +161,39 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/business-dashboard',
         name: 'business_dashboard',
         builder: (context, state) => const BusinessDashboardScreen(),
+        routes: [
+          GoRoute(
+            path: 'venues',
+            name: 'manage_venues',
+            builder: (context, state) => const VenueManagementScreen(),
+            routes: [
+              GoRoute(
+                path: ':venueId/media',
+                name: 'venue_media',
+                builder: (context, state) => VenueMediaScreen(
+                  venueId: state.pathParameters['venueId']!,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       GoRoute(
         path: '/admin-dashboard',
         name: 'admin_dashboard',
         builder: (context, state) => const AdminDashboardScreen(),
+        routes: [
+          GoRoute(
+            path: 'cities',
+            name: 'admin_cities',
+            builder: (context, state) => const CityManagementScreen(),
+          ),
+          GoRoute(
+            path: 'categories',
+            name: 'admin_categories',
+            builder: (context, state) => const CategoryManagementScreen(),
+          ),
+        ],
       ),
     ],
   );
