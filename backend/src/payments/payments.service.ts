@@ -87,10 +87,19 @@ export class PaymentsService {
       }
     }
 
-    const activePayment = booking.payments.find(p =>
+    // Integrity check: Reuse existing INITIATED/PENDING payment if it exists for this booking and provider
+    const existingActive = booking.payments.find(p =>
+        p.provider === requestedProvider &&
+        (p.status === PaymentStatus.INITIATED || p.status === PaymentStatus.PENDING)
+    );
+    if (existingActive) {
+        return existingActive;
+    }
+
+    const alreadyPaid = booking.payments.find(p =>
       p.status === PaymentStatus.CAPTURED || p.status === PaymentStatus.AUTHORIZED
     );
-    if (activePayment) {
+    if (alreadyPaid) {
       throw new ConflictException('Booking is already paid or authorized');
     }
 
@@ -155,7 +164,9 @@ export class PaymentsService {
     if (provider.verifyCheckout) {
       isValid = await provider.verifyCheckout(dto, amountInMinorUnits);
     } else {
-      isValid = provider.verifySignature(dto, dto.signature);
+      // Fallback for providers where we only have a signature
+      // Note: for real providers we should always use an authoritative check
+      isValid = provider.verifyWebhookSignature(JSON.stringify(dto), dto.signature);
     }
 
     if (!isValid) {
@@ -224,38 +235,54 @@ export class PaymentsService {
     return { status: 'success', booking: result.booking };
   }
 
-  async handleWebhook(providerType: string, payload: any, signature: string) {
+  async handleWebhook(providerType: string, payload: any, signature: string, rawBody?: string) {
     this.logger.log(`Received webhook for ${providerType}`);
 
     const pType = providerType.toUpperCase() as PaymentProvider;
     const provider = this.providerFactory.getProvider(pType);
 
-    const isValid = provider.verifySignature(payload, signature);
+    // Use rawBody if available for signature verification, otherwise fallback to stringified payload
+    const bodyToVerify = rawBody || JSON.stringify(payload);
+    const isValid = provider.verifyWebhookSignature(bodyToVerify, signature);
+
     if (!isValid) {
       this.logger.warn(`Invalid webhook signature from ${providerType}`);
       throw new BadRequestException('Invalid webhook signature');
     }
 
-    const providerOrderId = payload.order_id || payload.data?.object?.id || payload.payload?.payment?.entity?.order_id;
-    const providerPaymentId = payload.payment_id || payload.data?.object?.payment_intent || payload.payload?.payment?.entity?.id;
+    const providerEventId = payload.id || payload.event_id || `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const eventType = payload.event || payload.type;
 
-    if (!providerOrderId) {
-      return { status: 'ignored', reason: 'No order ID found' };
+    // 1. Webhook Idempotency Check
+    const existingEvent = await this.prisma.paymentWebhookEvent.findUnique({
+        where: { providerEventId }
+    });
+    if (existingEvent) {
+        return { status: 'ignored', reason: 'Duplicate event' };
     }
 
-    if (eventType === 'payment.captured' || eventType === 'checkout.session.completed' || eventType === 'payment_intent.succeeded') {
-      const payment = await this.prisma.payment.findUnique({
-        where: { providerOrderId },
+    const providerOrderId = payload.order_id || payload.data?.object?.id || payload.payload?.payment?.entity?.order_id;
+    const providerPaymentId = payload.payment_id || payload.data?.object?.payment_intent || payload.payload?.payment?.entity?.id;
+
+    if (!providerOrderId && !providerPaymentId) {
+      await this.recordWebhookEvent(pType, providerEventId, eventType, 'SKIPPED', payload);
+      return { status: 'ignored', reason: 'No order or payment ID found' };
+    }
+
+    if (['payment.captured', 'checkout.session.completed', 'payment_intent.succeeded'].includes(eventType)) {
+      const payment = await this.prisma.payment.findFirst({
+        where: { OR: [{ providerOrderId }, { providerPaymentId }] },
         include: { booking: true }
       });
 
       if (!payment) {
-        this.logger.error(`Payment record not found for provider order: ${providerOrderId}`);
+        this.logger.error(`Payment record not found for provider order/payment: ${providerOrderId || providerPaymentId}`);
+        await this.recordWebhookEvent(pType, providerEventId, eventType, 'NOT_FOUND', payload);
         return { status: 'error', reason: 'Payment not found' };
       }
 
       if (payment.status === PaymentStatus.CAPTURED) {
+        await this.recordWebhookEvent(pType, providerEventId, eventType, 'ALREADY_PROCESSED', payload, payment.id);
         return { status: 'noop', reason: 'Already processed' };
       }
 
@@ -269,7 +296,7 @@ export class PaymentsService {
           where: { id: payment.id },
           data: {
             status: PaymentStatus.CAPTURED,
-            providerPaymentId,
+            providerPaymentId: providerPaymentId || latestPayment.providerPaymentId,
           }
         });
 
@@ -284,27 +311,12 @@ export class PaymentsService {
         return { payment: updatedPayment, booking: updatedBooking || payment.booking, transitionedBooking: !!updatedBooking };
       }, { isolationLevel: 'Serializable' });
 
-      if (result.status === 'noop') return result;
-
-      // Log audit outside transaction (since it's a separate async operation usually)
-      // Actually audit Log is usually inside the transaction in this project pattern.
-      // But let's follow the requirement: side effects outside.
-
-      await this.prisma.auditLog.create({
-        data: {
-          userId: payment.booking.userId,
-          action: 'payment:webhook_captured',
-          resource: 'payment',
-          resourceId: payment.id,
-          status: 'success',
-          payload: { provider: providerType, eventType, previousStatus: payment.status }
-        }
-      });
+      await this.recordWebhookEvent(pType, providerEventId, eventType, 'SUCCESS', payload, payment.id);
 
       this.eventEmitter.emit(Events.PAYMENT_CAPTURED, {
-        paymentId: result.payment.id,
-        bookingId: result.payment.bookingId,
-        organizationId: result.payment.organizationId,
+        paymentId: payment.id,
+        bookingId: payment.bookingId,
+        organizationId: payment.organizationId,
         userId: payment.booking.userId,
         amount: payment.amount,
       });
@@ -323,8 +335,9 @@ export class PaymentsService {
     }
 
     // Handle Refund webhooks
-    if (eventType === 'refund.processed' || eventType === 'charge.refunded') {
-      const payment = await this.prisma.payment.findFirst({
+    if (['refund.processed', 'charge.refunded'].includes(eventType)) {
+       // Logic for refunds...
+       const payment = await this.prisma.payment.findFirst({
         where: {
           OR: [
             { providerPaymentId: payload.payment_id || payload.data?.object?.payment_intent },
@@ -333,8 +346,15 @@ export class PaymentsService {
         }
       });
 
-      if (!payment) return { status: 'ignored', reason: 'Payment for refund not found' };
-      if (payment.status === PaymentStatus.REFUNDED) return { status: 'noop', reason: 'Already refunded' };
+      if (!payment) {
+        await this.recordWebhookEvent(pType, providerEventId, eventType, 'NOT_FOUND', payload);
+        return { status: 'ignored', reason: 'Payment for refund not found' };
+      }
+
+      if (payment.status === PaymentStatus.REFUNDED) {
+         await this.recordWebhookEvent(pType, providerEventId, eventType, 'ALREADY_PROCESSED', payload, payment.id);
+         return { status: 'noop', reason: 'Already refunded' };
+      }
 
       const updatedPayment = await this.prisma.$transaction(async (tx) => {
          try {
@@ -348,6 +368,7 @@ export class PaymentsService {
       }, { isolationLevel: 'Serializable' });
 
       if (updatedPayment) {
+        await this.recordWebhookEvent(pType, providerEventId, eventType, 'SUCCESS', payload, payment.id);
         this.eventEmitter.emit(Events.PAYMENT_REFUNDED, {
           paymentId: updatedPayment.id,
           bookingId: updatedPayment.bookingId,
@@ -359,7 +380,54 @@ export class PaymentsService {
       return { status: 'success' };
     }
 
+    await this.recordWebhookEvent(pType, providerEventId, eventType, 'UNHANDLED', payload);
     return { received: true };
+  }
+
+  private async recordWebhookEvent(provider: string, eventId: string, type: string, status: string, payload: any, paymentId?: string) {
+    return this.prisma.paymentWebhookEvent.create({
+        data: {
+            provider,
+            providerEventId: eventId,
+            eventType: type,
+            status,
+            payload,
+            paymentId,
+        }
+    }).catch(err => this.logger.error(`Failed to record webhook event: ${err.message}`));
+  }
+
+  async reconcilePayment(organizationId: string, paymentId: string) {
+      const payment = await this.prisma.payment.findUnique({
+          where: { id: paymentId, organizationId },
+          include: { booking: true }
+      });
+
+      if (!payment) throw new NotFoundException('Payment not found');
+      if (payment.status === PaymentStatus.CAPTURED) return payment;
+
+      const provider = this.providerFactory.getProvider(payment.provider);
+      if (!provider.getOrderStatus) return payment;
+
+      const providerStatus = await provider.getOrderStatus(payment.providerOrderId!);
+
+      if (providerStatus === 'paid') {
+          // Trigger authoritative capture logic locally
+          // (Simulate a verify or webhook processing for this specific record)
+          return this.prisma.$transaction(async (tx) => {
+              const updated = await tx.payment.update({
+                  where: { id: paymentId },
+                  data: { status: PaymentStatus.CAPTURED }
+              });
+              await tx.booking.update({
+                  where: { id: payment.bookingId, status: BookingStatus.PENDING },
+                  data: { status: BookingStatus.CONFIRMED }
+              }).catch(() => null);
+              return updated;
+          });
+      }
+
+      return payment;
   }
 
   async initiateRefund(organizationId: string, paymentId: string, reason?: string) {
@@ -387,7 +455,7 @@ export class PaymentsService {
 
       try {
         const refundResult = await provider.initiateRefund({
-          paymentId: payment.providerPaymentId || payment.providerOrderId,
+          paymentId: payment.providerPaymentId || payment.providerOrderId!,
           amount: Number(payment.amount),
           notes: { reason: reason || 'User requested', bookingId: payment.bookingId }
         });

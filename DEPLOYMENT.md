@@ -16,6 +16,7 @@
 | `JWT_ACCESS_SECRET` | Secret for Access Token | **REQUIRED (32+ chars)** |
 | `JWT_REFRESH_SECRET` | Secret for Refresh Token | **REQUIRED (32+ chars)** |
 | `CORS_ORIGINS` | Allowed CORS origins | Comma-separated list |
+| `PAYMENT_PROVIDER` | `RAZORPAY`, `STRIPE` or `MOCK` | Default `RAZORPAY` |
 | `RAZORPAY_KEY_ID` | Razorpay Key ID | Optional (for payments) |
 | `RAZORPAY_KEY_SECRET` | Razorpay Key Secret | Optional (for payments) |
 | `RAZORPAY_WEBHOOK_SECRET` | Razorpay Webhook Secret | Optional |

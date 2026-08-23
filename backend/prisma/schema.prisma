@@ -508,3 +508,18 @@ model Media {
   @@index([userId])
   @@map("media")
 }
+
+model PaymentWebhookEvent {
+  id              String   @id @default(uuid())
+  provider        String
+  providerEventId String   @unique
+  eventType       String
+  paymentId       String?
+  processedAt     DateTime @default(now())
+  status          String   @default("SUCCESS")
+  payload         Json?
+  createdAt       DateTime @default(now())
+
+  @@index([provider, providerEventId])
+  @@map("payment_webhook_events")
+}

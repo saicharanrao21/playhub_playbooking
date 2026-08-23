@@ -53,7 +53,7 @@ export class StripePaymentProvider implements IPaymentProvider {
     }
   }
 
-  verifySignature(payload: any, signature: string): boolean {
+  verifyWebhookSignature(rawBody: string, signature: string): boolean {
     const secret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
     if (!secret) {
       this.logger.error('STRIPE_WEBHOOK_SECRET is not configured');
@@ -61,7 +61,7 @@ export class StripePaymentProvider implements IPaymentProvider {
     }
 
     try {
-      this.stripe.webhooks.constructEvent(payload, signature, secret);
+      this.stripe.webhooks.constructEvent(rawBody, signature, secret);
       return true;
     } catch (err) {
       this.logger.warn(`Stripe webhook signature verification failed: ${err.message}`);
@@ -100,6 +100,20 @@ export class StripePaymentProvider implements IPaymentProvider {
       };
     } catch (error) {
       this.logger.error('Failed to initiate Stripe refund', error.stack);
+      throw error;
+    }
+  }
+
+  async getOrderStatus(orderId: string): Promise<string> {
+    // orderId in Stripe context for our wrapper might be paymentIntentId
+    if (!this.stripe) {
+        throw new InternalServerErrorException('Stripe provider not initialized');
+    }
+    try {
+      const intent = await this.stripe.paymentIntents.retrieve(orderId);
+      return intent.status;
+    } catch (error) {
+      this.logger.error(`Failed to fetch Stripe status for ${orderId}`, error.stack);
       throw error;
     }
   }

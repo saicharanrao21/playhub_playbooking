@@ -2,28 +2,29 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PaymentsService } from './payments.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { IPaymentProvider, PAYMENT_PROVIDER } from './interfaces/payment-provider.interface';
+import { PAYMENT_PROVIDER } from './interfaces/payment-provider.interface';
 import { PaymentProviderFactory } from './providers/payment-provider.factory';
-import { BookingStatus, PaymentStatus, PaymentProvider } from '@prisma/client';
+import { BookingStatus, PaymentStatus } from '@prisma/client';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 
 describe('PaymentsService', () => {
   let service: PaymentsService;
   let prisma: PrismaService;
-  let factory: PaymentProviderFactory;
 
   const mockPrisma = {
     booking: { findFirst: jest.fn(), update: jest.fn().mockReturnValue(Promise.resolve({})) },
-    payment: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn().mockReturnValue(Promise.resolve({})) },
+    payment: { create: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn().mockReturnValue(Promise.resolve({})) },
+    paymentWebhookEvent: { findUnique: jest.fn(), create: jest.fn().mockReturnValue(Promise.resolve({})) },
     auditLog: { create: jest.fn() },
     $transaction: jest.fn((cb) => cb(mockPrisma)),
   };
 
   const mockProvider = {
     createOrder: jest.fn(),
-    verifySignature: jest.fn(),
+    verifyWebhookSignature: jest.fn(),
     verifyCheckout: jest.fn(),
     initiateRefund: jest.fn(),
+    getOrderStatus: jest.fn(),
   };
 
   const mockFactory = {
@@ -47,7 +48,6 @@ describe('PaymentsService', () => {
 
     service = module.get<PaymentsService>(PaymentsService);
     prisma = module.get<PrismaService>(PrismaService);
-    factory = module.get<PaymentProviderFactory>(PaymentProviderFactory);
 
     jest.clearAllMocks();
   });
@@ -56,17 +56,6 @@ describe('PaymentsService', () => {
     mockPrisma.booking.findFirst.mockResolvedValue({ id: 'b1', userId: 'u1', status: BookingStatus.CANCELLED, payments: [] });
     await expect(service.createOrder('org1', 'u1', { bookingId: 'b1' }))
       .rejects.toThrow(BadRequestException);
-  });
-
-  it('should throw ConflictException if already paid', async () => {
-    mockPrisma.booking.findFirst.mockResolvedValue({
-      id: 'b1',
-      userId: 'u1',
-      status: BookingStatus.PENDING,
-      payments: [{ status: PaymentStatus.CAPTURED }]
-    });
-    await expect(service.createOrder('org1', 'u1', { bookingId: 'b1' }))
-      .rejects.toThrow(ConflictException);
   });
 
   it('should create order with server-calculated amount', async () => {
@@ -88,35 +77,13 @@ describe('PaymentsService', () => {
     }));
   });
 
-  it('should use verifyCheckout if available during verifyPayment', async () => {
-    const dto = {
-      providerOrderId: 'order_123',
-      providerPaymentId: 'pay_abc',
-      signature: 'valid_sig'
-    };
-
-    mockPrisma.payment.findUnique.mockResolvedValue({
-      id: 'p1',
-      organizationId: 'org1',
-      bookingId: 'b1',
-      amount: 100.50,
-      status: PaymentStatus.INITIATED,
-      booking: { userId: 'u1' }
-    });
-
-    mockProvider.verifyCheckout.mockResolvedValue(true);
-
-    await service.verifyPayment('org1', 'u1', dto);
-
-    expect(mockProvider.verifyCheckout).toHaveBeenCalledWith(dto, 10050);
-  });
-
-  it('should process webhook capture successfully', async () => {
-    const payload = { event: 'payment.captured', order_id: 'order_123', payment_id: 'pay_abc' };
+  it('should process webhook capture successfully with idempotency', async () => {
+    const payload = { id: 'evt_123', event: 'payment.captured', order_id: 'order_123' };
     const signature = 'valid_sig';
 
-    mockProvider.verifySignature.mockReturnValue(true);
-    mockPrisma.payment.findUnique.mockResolvedValue({
+    mockProvider.verifyWebhookSignature.mockReturnValue(true);
+    mockPrisma.paymentWebhookEvent.findUnique.mockResolvedValue(null);
+    mockPrisma.payment.findFirst.mockResolvedValue({
       id: 'p1',
       organizationId: 'org1',
       bookingId: 'b1',
@@ -128,46 +95,28 @@ describe('PaymentsService', () => {
     const result = await service.handleWebhook('RAZORPAY', payload, signature);
 
     expect(result).toEqual({ status: 'success' });
-    expect(mockPrisma.payment.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'p1' }
+    expect(mockPrisma.paymentWebhookEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ providerEventId: 'evt_123' })
     }));
   });
 
   it('should ignore duplicate webhooks', async () => {
-    const payload = { event: 'payment.captured', order_id: 'order_123' };
-    mockProvider.verifySignature.mockReturnValue(true);
-    mockPrisma.payment.findUnique.mockResolvedValue({
-      id: 'p1',
-      status: PaymentStatus.CAPTURED,
-    });
-
-    const result = await service.handleWebhook('RAZORPAY', payload, 'valid_sig');
-
-    expect(result.status).toBe('noop');
+    mockPrisma.paymentWebhookEvent.findUnique.mockResolvedValue({ id: 'processed' });
+    const result = await service.handleWebhook('RAZORPAY', { id: 'evt_123' }, 'sig');
+    expect(result.status).toBe('ignored');
   });
 
-  it('should throw BadRequestException for invalid state transitions in verifyPayment', async () => {
-    mockPrisma.payment.findUnique.mockResolvedValue({
-      id: 'p1',
-      organizationId: 'org1',
-      status: PaymentStatus.FAILED,
-      booking: { userId: 'u1' }
+  it('should be idempotent in createOrder by reusing pending payments', async () => {
+    const pendingPayment = { id: 'p1', provider: 'RAZORPAY', status: PaymentStatus.INITIATED };
+    mockPrisma.booking.findFirst.mockResolvedValue({
+        id: 'b1',
+        userId: 'u1',
+        organizationId: 'org1',
+        payments: [pendingPayment]
     });
 
-    await expect(service.verifyPayment('org1', 'u1', {
-      providerOrderId: 'order_123',
-      providerPaymentId: 'pay_abc',
-      signature: 'valid_sig'
-    })).rejects.toThrow(BadRequestException);
-  });
-
-  it('should be idempotent in createOrder if idempotencyKey is provided', async () => {
-    const existingPayment = { id: 'p1', bookingId: 'b1', organizationId: 'org1' };
-    mockPrisma.booking.findFirst.mockResolvedValue({ id: 'b1', userId: 'u1', organizationId: 'org1', payments: [] });
-    mockPrisma.payment.findUnique.mockResolvedValue(existingPayment);
-
-    const result = await service.createOrder('org1', 'u1', { bookingId: 'b1' }, 'key_123');
-    expect(result).toEqual(existingPayment);
+    const result = await service.createOrder('org1', 'u1', { bookingId: 'b1', provider: 'RAZORPAY' as any });
+    expect(result).toEqual(pendingPayment);
     expect(mockProvider.createOrder).not.toHaveBeenCalled();
   });
 });

@@ -50,4 +50,9 @@ class PaymentRepository {
     );
     return response.isSuccess;
   }
+
+  Future<bool> reconcilePayment(String paymentId) async {
+    final response = await _apiClient.post('$_baseUrl/$paymentId/reconcile');
+    return response.isSuccess;
+  }
 }

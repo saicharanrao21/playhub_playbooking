@@ -18,7 +18,7 @@ export class MockPaymentProvider implements IPaymentProvider {
     };
   }
 
-  verifySignature(payload: any, signature: string): boolean {
+  verifyWebhookSignature(rawBody: string, signature: string): boolean {
     // In mock, any signature starting with 'valid_' is fine
     return signature.startsWith('valid_');
   }
@@ -33,5 +33,9 @@ export class MockPaymentProvider implements IPaymentProvider {
       id: `ref_mock_${crypto.randomUUID()}`,
       status: 'processed',
     };
+  }
+
+  async getOrderStatus(orderId: string): Promise<string> {
+    return 'paid'; // Always paid in mock for now
   }
 }

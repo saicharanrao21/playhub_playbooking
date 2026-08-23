@@ -50,7 +50,7 @@ export class RazorpayPaymentProvider implements IPaymentProvider {
     }
   }
 
-  verifySignature(payload: any, signature: string): boolean {
+  verifyWebhookSignature(rawBody: string, signature: string): boolean {
     const webhookSecret = this.configService.get<string>('RAZORPAY_WEBHOOK_SECRET');
 
     if (!webhookSecret) {
@@ -60,7 +60,7 @@ export class RazorpayPaymentProvider implements IPaymentProvider {
 
     const expectedSignature = crypto
       .createHmac('sha256', webhookSecret)
-      .update(JSON.stringify(payload))
+      .update(rawBody)
       .digest('hex');
 
     return expectedSignature === signature;
@@ -87,7 +87,7 @@ export class RazorpayPaymentProvider implements IPaymentProvider {
       return false;
     }
 
-    // For Razorpay, we should also verify the amount by fetching the order
+    // Authoritative check
     try {
        const order = await this.razorpay.orders.fetch(data.providerOrderId);
        return order.amount === expectedAmountMinorUnits;
@@ -113,6 +113,19 @@ export class RazorpayPaymentProvider implements IPaymentProvider {
       };
     } catch (error) {
       this.logger.error('Failed to initiate Razorpay refund', error.stack);
+      throw error;
+    }
+  }
+
+  async getOrderStatus(orderId: string): Promise<string> {
+    if (!this.razorpay) {
+      throw new InternalServerErrorException('Razorpay provider not initialized');
+    }
+    try {
+      const order = await this.razorpay.orders.fetch(orderId);
+      return order.status; // 'created', 'attempted', 'paid'
+    } catch (error) {
+      this.logger.error(`Failed to fetch Razorpay order status for ${orderId}`, error.stack);
       throw error;
     }
   }

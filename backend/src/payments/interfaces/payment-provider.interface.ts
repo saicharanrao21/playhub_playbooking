@@ -1,5 +1,3 @@
-export const PAYMENT_PROVIDER = 'PAYMENT_PROVIDER';
-
 export interface CreateOrderOptions {
   amount: number; // In minor units (e.g. paise, cents)
   currency: string;
@@ -28,7 +26,15 @@ export interface RefundResult {
 
 export interface IPaymentProvider {
   createOrder(options: CreateOrderOptions): Promise<PaymentOrder>;
-  verifySignature(payload: any, signature: string): boolean;
-  verifyCheckout?(data: any, expectedAmountMinorUnits: number): Promise<boolean>; // Optional authoritative check
+  /**
+   * Verifies webhook signature.
+   * @param rawBody The raw request body as string
+   * @param signature The signature from headers
+   */
+  verifyWebhookSignature(rawBody: string, signature: string): boolean;
+  verifyCheckout?(data: any, expectedAmountMinorUnits: number): Promise<boolean>;
   initiateRefund(options: RefundOptions): Promise<RefundResult>;
+  getOrderStatus?(orderId: string): Promise<string>;
 }
+
+export const PAYMENT_PROVIDER = 'PAYMENT_PROVIDER';

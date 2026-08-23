@@ -62,6 +62,16 @@ export class PaymentsController {
     return this.paymentsService.initiateRefund(organizationId, id, reason);
   }
 
+  @Post(':id/reconcile')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reconcile a pending payment with provider status' })
+  async reconcilePayment(
+    @OrganizationContext() organizationId: string,
+    @Param('id') id: string,
+  ) {
+    return this.paymentsService.reconcilePayment(organizationId, id);
+  }
+
   @Public()
   @Post('webhook/:provider')
   @ApiOperation({ summary: 'Handle payment provider webhooks' })
@@ -72,6 +82,7 @@ export class PaymentsController {
   ) {
     const provider = req.params.provider;
     const signature = req.headers['x-razorpay-signature'] || req.headers['stripe-signature'];
-    return this.paymentsService.handleWebhook(provider, payload, signature);
+    const rawBody = req.rawBody?.toString();
+    return this.paymentsService.handleWebhook(provider, payload, signature, rawBody);
   }
 }

@@ -61,6 +61,10 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
+  PAYMENT_PROVIDER?: string;
+
+  @IsString()
+  @IsOptional()
   MEDIA_STORAGE_PROVIDER?: string;
 
   @IsString()

@@ -61,29 +61,37 @@ class _BookingReviewScreenState extends ConsumerState<BookingReviewScreen> {
       }
 
       // 3. Trigger Payment Provider
-      bool verified = false;
       if (order.provider == PaymentProvider.mock) {
-        verified = await paymentRepo.verifyPayment(
+        final verified = await paymentRepo.verifyPayment(
           providerOrderId: order.id,
           providerPaymentId: 'pay_simulated_${booking.id}',
           signature: 'valid_simulated_sig',
         );
-      } else {
-        // In a real implementation, this would call Razorpay/Stripe SDK.
-        throw Exception('Real payment integration for ${order.provider.name} required external SDK setup.');
-      }
 
-      if (mounted) {
-        if (verified) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Booking confirmed successfully!')),
-          );
-          context.go('/bookings'); 
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Payment verification failed. Please check your bookings.')),
-          );
+        if (mounted) {
+          if (verified) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Booking confirmed successfully!')),
+            );
+            context.go('/bookings'); 
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Payment verification failed. Please check your bookings.')),
+            );
+            context.go('/bookings');
+          }
+        }
+      } else {
+        // Real provider flow
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Redirecting to ${order.provider.name.toUpperCase()}...')),
+        );
+        
+        if (mounted) {
           context.go('/bookings');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please complete the payment in the provider popup.')),
+          );
         }
       }
     } catch (e) {
