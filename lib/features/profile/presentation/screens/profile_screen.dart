@@ -60,6 +60,12 @@ class ProfileScreen extends ConsumerWidget {
             'Notifications',
             () => context.push('/notifications'),
           ),
+          _buildMenuItem(
+            context,
+            Icons.notifications_active_outlined,
+            'Notification Preferences',
+            () => context.push('/profile/notifications'),
+          ),
           const Divider(),
           if (ref.hasRole(UserRole.businessOwner) || ref.hasRole(UserRole.admin))
             _buildMenuItem(

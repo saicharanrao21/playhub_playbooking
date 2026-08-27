@@ -5,16 +5,18 @@ import 'token_storage.dart';
 import '../models/auth_models.dart';
 import '../models/app_models.dart';
 import '../../app/bootstrap/bootstrap.dart';
+import '../services/push_notification_service.dart';
 
 final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final authRepository = ref.watch(authRepositoryProvider);
-  return AuthNotifier(authRepository);
+  return AuthNotifier(authRepository, ref);
 });
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final IAuthRepository _authRepository;
+  final Ref _ref;
 
-  AuthNotifier(this._authRepository) : super(const AuthState.initializing()) {
+  AuthNotifier(this._authRepository, this._ref) : super(const AuthState.initializing()) {
     _init();
   }
 
@@ -22,6 +24,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final identity = _authRepository.getCurrentIdentity();
     if (identity != null) {
       state = AuthState.authenticated(identity);
+      _registerDevice();
     } else {
       state = const AuthState.unauthenticated();
     }
@@ -29,10 +32,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _authRepository.identityChanges.listen((identity) {
       if (identity != null) {
         state = AuthState.authenticated(identity);
+        _registerDevice();
       } else {
         state = const AuthState.unauthenticated();
       }
     });
+  }
+
+  Future<void> _registerDevice() async {
+    // Fire and forget device registration
+    _ref.read(deviceRegistrationProvider).registerCurrentDevice();
   }
 
   Future<void> login(String email, String password) async {

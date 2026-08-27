@@ -9,6 +9,7 @@ import '../repositories/category_repository.dart';
 import '../repositories/activity_repository.dart';
 import '../repositories/discovery_repository.dart';
 import '../repositories/media_repository.dart';
+import '../repositories/communication_repository.dart';
 import '../../features/business_dashboard/data/dashboard_repository.dart';
 import '../../features/admin_dashboard/data/admin_repository.dart';
 
@@ -58,4 +59,9 @@ final venueOperatorRepositoryProvider = Provider<VenueOperatorRepository>((ref) 
   final apiClient = ref.watch(apiClientProvider);
   final orgId = ref.watch(activeOrganizationProvider) ?? '';
   return VenueOperatorRepository(apiClient, orgId);
+});
+
+final communicationRepositoryProvider = Provider<CommunicationRepository>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return CommunicationRepository(apiClient);
 });

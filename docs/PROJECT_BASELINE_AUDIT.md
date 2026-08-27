@@ -21,6 +21,7 @@ PlayHub is a Sports & Activity Booking Platform built on a multi-tenant NestJS b
 | **City/Category CRUD** | ✅ | ✅ | ✅ | ✅ | PASS |
 | **Activity CRUD** | ✅ | ✅ | ✅ | ✅ | PASS |
 | **Business Approval** | ✅ | ✅ | ✅ | ✅ | PASS |
+| **Communication** | ✅ | ✅ | ✅ | ✅ | PASS |
 
 ## 3. Technical Audit Results
 - **Tenant Isolation**: Verified. All owner APIs derive `organizationId` from JWT.

@@ -100,6 +100,28 @@ enum MediaType {
   DOCUMENT
 }
 
+enum CommunicationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  WHATSAPP
+  PUSH
+}
+
+enum CommunicationCategory {
+  TRANSACTIONAL
+  MARKETING
+  SECURITY
+}
+
+enum CommunicationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  SKIPPED
+}
+
 model User {
   id              String        @id @default(uuid())
   email           String        @unique
@@ -113,12 +135,15 @@ model User {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  memberships   Membership[]
-  sessions      Session[]
-  auditLogs     AuditLog[]
-  bookings      Booking[]
-  notifications Notification[]
-  media         Media[]
+  memberships              Membership[]
+  sessions                 Session[]
+  auditLogs                AuditLog[]
+  bookings                 Booking[]
+  notifications            Notification[]
+  media                    Media[]
+  devices                  Device[]
+  communicationPreferences CommunicationPreference[]
+  communicationLogs        CommunicationLog[]
 
   @@map("users")
 }
@@ -523,4 +548,58 @@ model PaymentWebhookEvent {
   @@unique([provider, providerEventId])
   @@index([provider, providerEventId])
   @@map("payment_webhook_events")
+}
+
+model CommunicationPreference {
+  id        String                @id @default(uuid())
+  userId    String
+  category  CommunicationCategory
+  channel   CommunicationChannel
+  isEnabled Boolean               @default(true)
+  updatedAt DateTime              @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, category, channel])
+  @@map("communication_preferences")
+}
+
+model Device {
+  id         String   @id @default(uuid())
+  userId     String
+  token      String   @unique
+  platform   String? // 'ios', 'android', 'web'
+  isActive   Boolean  @default(true)
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("devices")
+}
+
+model CommunicationLog {
+  id             String              @id @default(uuid())
+  organizationId String?
+  userId         String
+  bookingId      String?
+  paymentId      String?
+  channel        CommunicationChannel
+  provider       String
+  providerRef    String?
+  status         CommunicationStatus
+  error          String?
+  templateId     String?
+  metadata       Json?
+  sentAt         DateTime?
+  createdAt      DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([bookingId])
+  @@index([status])
+  @@map("communication_logs")
 }

@@ -14,6 +14,7 @@ import { AvailabilityModule } from './availability/availability.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { PaymentsModule } from './payments/payments.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { CommunicationModule } from './communication/communication.module';
 import { CitiesModule } from './cities/cities.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ActivitiesModule } from './activities/activities.module';
@@ -54,6 +55,7 @@ import { validate } from './common/config/env.validation';
     BookingsModule,
     PaymentsModule,
     NotificationsModule,
+    CommunicationModule,
     CitiesModule,
     CategoriesModule,
     ActivitiesModule,
