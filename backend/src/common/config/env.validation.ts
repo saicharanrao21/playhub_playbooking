@@ -32,12 +32,44 @@ class EnvironmentVariables {
   JWT_ACCESS_SECRET: string;
 
   @IsString()
+  @IsOptional()
+  JWT_ACCESS_EXPIRES_IN?: string;
+
+  @IsString()
   @MinLength(32)
   JWT_REFRESH_SECRET: string;
 
   @IsString()
   @IsOptional()
+  JWT_REFRESH_EXPIRES_IN?: string;
+
+  @IsString()
+  @IsOptional()
   CORS_ORIGINS?: string;
+
+  @IsString()
+  @IsOptional()
+  REDIS_URL?: string;
+
+  @IsNumber()
+  @IsOptional()
+  THROTTLE_TTL?: number;
+
+  @IsNumber()
+  @IsOptional()
+  THROTTLE_LIMIT?: number;
+
+  @IsString()
+  @IsOptional()
+  LOG_LEVEL?: string;
+
+  @IsString()
+  @IsOptional()
+  RESEND_API_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  EMAIL_FROM?: string;
 
   @IsString()
   @IsOptional()

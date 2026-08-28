@@ -33,6 +33,6 @@ EXPOSE 3000
 
 ENV NODE_ENV=production
 
-# By default, just start the app.
-# Migrations should ideally be a separate release step.
-CMD ["npm", "run", "start:prod"]
+# By default, run migrations and then start the app.
+# This ensures the database is always in sync with the current schema on deployment.
+CMD ["npm", "run", "start:prod:migrate"]
