@@ -17,6 +17,7 @@ import { WebhooksController } from './webhooks.controller';
     PaymentsService,
     RazorpayPaymentProvider,
     StripePaymentProvider,
+    MockPaymentProvider,
     PaymentProviderFactory,
     {
       provide: PAYMENT_PROVIDER,

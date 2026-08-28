@@ -1,6 +1,6 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Stripe from 'stripe';
+const Stripe = require('stripe');
 import {
   IPaymentProvider,
   CreateOrderOptions,
@@ -12,7 +12,7 @@ import {
 @Injectable()
 export class StripePaymentProvider implements IPaymentProvider {
   private readonly logger = new Logger(StripePaymentProvider.name);
-  private stripe: Stripe;
+  private stripe: any;
 
   constructor(private configService: ConfigService) {
     const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
