@@ -1,0 +1,4 @@
+# This is your Prisma migration lock file.
+# It uses a deterministic hash of the database schema to detect drift.
+
+provider = "postgresql"

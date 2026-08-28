@@ -22,6 +22,10 @@
 **Objective**: Prepare the backend for cloud deployment with managed database.
 - **Completed**: Docker hardening, Environment validation, Health checks, Deployment documentation.
 
+### Phase 49.1: Database Migration Integrity ✅
+**Objective**: Ensure fresh database initialization works via migrations.
+- **Completed**: Fixed migration history gaps, created baseline migration, verified deployment scripts.
+
 ## TIER 2 — HIGH-VALUE POST-LAUNCH
 ### Phase 50: Customer Trust Loop
 **Objective**: Social proof for venues.
