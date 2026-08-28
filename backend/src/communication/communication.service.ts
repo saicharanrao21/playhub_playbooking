@@ -1,15 +1,22 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CommunicationChannel,
   CommunicationCategory,
-  CommunicationStatus
+  CommunicationStatus,
+  Prisma
 } from '@prisma/client';
 import { TemplateRegistry } from './template.registry';
-import { ResendEmailProvider } from './providers/resend-email.provider';
-import { MockSmsProvider } from './providers/mock-sms.provider';
-import { MockWhatsAppProvider } from './providers/mock-whatsapp.provider';
-import { MockPushProvider } from './providers/mock-push.provider';
+import {
+  EMAIL_PROVIDER,
+  SMS_PROVIDER,
+  WHATSAPP_PROVIDER,
+  PUSH_PROVIDER
+} from './interfaces/provider-tokens';
+import { EmailProvider } from './interfaces/email-provider.interface';
+import { SmsProvider } from './interfaces/sms-provider.interface';
+import { WhatsAppProvider } from './interfaces/whatsapp-provider.interface';
+import { PushProvider } from './interfaces/push-provider.interface';
 
 @Injectable()
 export class CommunicationService {
@@ -18,10 +25,10 @@ export class CommunicationService {
   constructor(
     private prisma: PrismaService,
     private templateRegistry: TemplateRegistry,
-    private emailProvider: ResendEmailProvider,
-    private smsProvider: MockSmsProvider,
-    private whatsappProvider: MockWhatsAppProvider,
-    private pushProvider: MockPushProvider,
+    @Inject(EMAIL_PROVIDER) private emailProvider: EmailProvider,
+    @Inject(SMS_PROVIDER) private smsProvider: SmsProvider,
+    @Inject(WHATSAPP_PROVIDER) private whatsappProvider: WhatsAppProvider,
+    @Inject(PUSH_PROVIDER) private pushProvider: PushProvider,
   ) {}
 
   async sendNotification(params: {
@@ -33,27 +40,50 @@ export class CommunicationService {
     category: CommunicationCategory;
     variables: any;
     channels?: CommunicationChannel[];
+    idempotencyKey?: string;
   }) {
-    const { userId, type, category, variables, channels: requestedChannels } = params;
+    const { userId, category, channels: requestedChannels, idempotencyKey } = params;
 
-    // 1. Get user preferences
+    // 1. Determine base channels if none requested
+    let targetChannels = requestedChannels;
+    if (!targetChannels) {
+      if (category === CommunicationCategory.SECURITY) {
+        targetChannels = [CommunicationChannel.EMAIL];
+      } else if (category === CommunicationCategory.TRANSACTIONAL) {
+        targetChannels = [CommunicationChannel.IN_APP, CommunicationChannel.EMAIL, CommunicationChannel.PUSH];
+      } else {
+        targetChannels = [CommunicationChannel.IN_APP, CommunicationChannel.PUSH];
+      }
+    }
+
+    // 2. Get user preferences
     const preferences = await this.prisma.communicationPreference.findMany({
       where: { userId, category },
     });
 
-    // 2. Determine enabled channels (In-app is always enabled for transactional)
-    const activeChannels = requestedChannels || [
-      CommunicationChannel.IN_APP,
-      CommunicationChannel.EMAIL,
-      CommunicationChannel.PUSH,
-    ];
-
     const results = [];
 
-    for (const channel of activeChannels) {
+    for (const channel of targetChannels) {
+      // In-app is always enabled for non-marketing
+      if (channel === CommunicationChannel.IN_APP) {
+        // Handle in-app separately if needed, for now we assume it's handled by NotificationsService
+        // But Phase 48 design said In-app is always enabled for transactional.
+        continue;
+      }
+
       const pref = preferences.find((p) => p.channel === channel);
+
+      // Security category bypasses preferences.
+      // Transactional has fallback logic: if Email is requested but disabled, we might still send it
+      // if it's the only reliable channel, but usually we respect it unless it's SECURITY.
+      // For PlayHub, let's stick to: SECURITY bypasses, others respect.
       if (pref && !pref.isEnabled && category !== CommunicationCategory.SECURITY) {
         this.logger.log(`Channel ${channel} disabled by user preference for ${category}`);
+
+        // Log as SKIPPED if idempotencyKey is provided to avoid duplicate "skipped" attempts
+        if (idempotencyKey) {
+          await this.logSkipped(userId, channel, idempotencyKey, 'DISABLED_BY_USER', params);
+        }
         continue;
       }
 
@@ -63,22 +93,57 @@ export class CommunicationService {
     return Promise.all(results);
   }
 
+  private async logSkipped(userId: string, channel: CommunicationChannel, idempotencyKey: string, reason: string, params: any) {
+    try {
+      await this.prisma.communicationLog.create({
+        data: {
+          userId,
+          organizationId: params.organizationId,
+          bookingId: params.bookingId,
+          paymentId: params.paymentId,
+          channel,
+          provider: 'NONE',
+          status: CommunicationStatus.SKIPPED,
+          templateId: params.type,
+          idempotencyKey,
+          error: reason,
+        },
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        // Already logged/processed
+        return;
+      }
+      throw e;
+    }
+  }
+
   private async dispatch(channel: CommunicationChannel, params: any) {
-    const { userId, type, variables, organizationId, bookingId, paymentId } = params;
+    const { userId, type, variables, organizationId, bookingId, paymentId, idempotencyKey } = params;
     const template = this.templateRegistry.getTemplate(type, variables);
 
-    const logEntry = await this.prisma.communicationLog.create({
-      data: {
-        userId,
-        organizationId,
-        bookingId,
-        paymentId,
-        channel,
-        provider: 'PENDING',
-        status: CommunicationStatus.PENDING,
-        templateId: type,
-      },
-    });
+    let logEntry;
+    try {
+      logEntry = await this.prisma.communicationLog.create({
+        data: {
+          userId,
+          organizationId,
+          bookingId,
+          paymentId,
+          channel,
+          provider: 'PENDING',
+          status: CommunicationStatus.PENDING,
+          templateId: type,
+          idempotencyKey,
+        },
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        this.logger.log(`Communication already processed for user ${userId}, channel ${channel}, key ${idempotencyKey}`);
+        return;
+      }
+      throw e;
+    }
 
     try {
       let result;
@@ -112,7 +177,7 @@ export class CommunicationService {
             where: { userId, isActive: true },
           });
           if (devices.length === 0) {
-            result = { success: true, skipped: true };
+            result = { success: true, skipped: true, reason: 'NO_ACTIVE_DEVICES' };
             providerName = 'NONE';
           } else {
             providerName = this.pushProvider.getName();
@@ -142,11 +207,13 @@ export class CommunicationService {
       await this.prisma.communicationLog.update({
         where: { id: logEntry.id },
         data: {
-          status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+          status: result.skipped
+            ? CommunicationStatus.SKIPPED
+            : (result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED),
           provider: providerName,
           providerRef: result.messageId,
-          error: result.error,
-          sentAt: result.success ? new Date() : null,
+          error: result.error || result.reason,
+          sentAt: (result.success && !result.skipped) ? new Date() : null,
         },
       });
     } catch (error) {
@@ -162,6 +229,7 @@ export class CommunicationService {
   }
 
   async registerDevice(userId: string, token: string, platform?: string) {
+    // If token belongs to another user, we take it over (e.g. user changed on same phone)
     return this.prisma.device.upsert({
       where: { token },
       update: { userId, platform, isActive: true, lastUsedAt: new Date() },
@@ -169,8 +237,20 @@ export class CommunicationService {
     });
   }
 
-  async unregisterDevice(token: string) {
-    return this.prisma.device.updateMany({
+  async unregisterDevice(userId: string, token: string) {
+    const device = await this.prisma.device.findUnique({
+      where: { token }
+    });
+
+    if (!device) {
+      throw new NotFoundException('Device not found');
+    }
+
+    if (device.userId !== userId) {
+      throw new ForbiddenException('You do not own this device registration');
+    }
+
+    return this.prisma.device.update({
       where: { token },
       data: { isActive: false },
     });

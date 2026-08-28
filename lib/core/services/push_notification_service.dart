@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/repository_providers.dart';
+import '../storage/storage_interface.dart';
+import '../../app/bootstrap/bootstrap.dart';
 
 abstract class IPushNotificationService {
   Future<void> initialize();
@@ -11,6 +13,11 @@ abstract class IPushNotificationService {
 }
 
 class MockPushNotificationService implements IPushNotificationService {
+  final IStorage _storage;
+  static const _tokenKey = 'mock_push_token';
+
+  MockPushNotificationService(this._storage);
+
   @override
   Future<void> initialize() async {
     debugPrint('MockPushNotificationService: Initializing...');
@@ -18,7 +25,12 @@ class MockPushNotificationService implements IPushNotificationService {
 
   @override
   Future<String?> getToken() async {
-    return 'mock-token-${DateTime.now().millisecondsSinceEpoch}';
+    String? token = await _storage.read(_tokenKey);
+    if (token == null) {
+      token = 'mock-token-${DateTime.now().millisecondsSinceEpoch}';
+      await _storage.write(_tokenKey, token);
+    }
+    return token;
   }
 
   @override
@@ -33,7 +45,8 @@ class MockPushNotificationService implements IPushNotificationService {
 }
 
 final pushNotificationServiceProvider = Provider<IPushNotificationService>((ref) {
-  return MockPushNotificationService();
+  final storage = ref.watch(localStorageProvider);
+  return MockPushNotificationService(storage);
 });
 
 // Helper provider to handle device registration on login

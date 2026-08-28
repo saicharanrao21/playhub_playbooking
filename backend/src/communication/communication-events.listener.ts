@@ -20,6 +20,7 @@ export class CommunicationEventsListener {
       bookingId: payload.bookingId,
       type: 'BOOKING_CONFIRMED',
       category: CommunicationCategory.TRANSACTIONAL,
+      idempotencyKey: `booking-confirmed-${payload.bookingId}`,
       variables: {
         customerName: payload.userName || 'Customer',
         venueName: payload.venueName,
@@ -40,6 +41,7 @@ export class CommunicationEventsListener {
       bookingId: payload.bookingId,
       type: 'BOOKING_CANCELLED',
       category: CommunicationCategory.TRANSACTIONAL,
+      idempotencyKey: `booking-cancelled-${payload.bookingId}`,
       variables: {
         customerName: payload.userName || 'Customer',
         venueName: payload.venueName,
@@ -61,6 +63,7 @@ export class CommunicationEventsListener {
       paymentId: payload.paymentId,
       type: 'PAYMENT_SUCCESS',
       category: CommunicationCategory.TRANSACTIONAL,
+      idempotencyKey: `payment-success-${payload.paymentId}`,
       variables: {
         customerName: payload.userName || 'Customer',
         bookingId: payload.bookingId,

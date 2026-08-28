@@ -1,11 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { WhatsAppProvider, WhatsAppOptions, WhatsAppResponse } from '../interfaces/whatsapp-provider.interface';
 
 @Injectable()
 export class MockWhatsAppProvider implements WhatsAppProvider {
   private readonly logger = new Logger(MockWhatsAppProvider.name);
 
+  constructor(private configService: ConfigService) {}
+
   async send(options: WhatsAppOptions): Promise<WhatsAppResponse> {
+    if (this.configService.get('NODE_ENV') === 'production') {
+      throw new InternalServerErrorException('MockWhatsAppProvider is not allowed in production');
+    }
+
     this.logger.log(
       `[MOCK WHATSAPP] Sending template ${options.templateName} to ${options.to} with vars: ${JSON.stringify(
         options.variables,

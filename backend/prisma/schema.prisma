@@ -580,7 +580,7 @@ model Device {
 }
 
 model CommunicationLog {
-  id             String              @id @default(uuid())
+  id             String               @id @default(uuid())
   organizationId String?
   userId         String
   bookingId      String?
@@ -591,15 +591,18 @@ model CommunicationLog {
   status         CommunicationStatus
   error          String?
   templateId     String?
+  idempotencyKey String?
   metadata       Json?
   sentAt         DateTime?
-  createdAt      DateTime            @default(now())
+  createdAt      DateTime             @default(now())
 
   user User @relation(fields: [userId], references: [id])
 
+  @@unique([userId, channel, idempotencyKey])
   @@index([userId])
   @@index([organizationId])
   @@index([bookingId])
   @@index([status])
+  @@index([idempotencyKey])
   @@map("communication_logs")
 }

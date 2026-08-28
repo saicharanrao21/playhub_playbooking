@@ -26,8 +26,8 @@ export class CommunicationController {
   }
 
   @Delete('devices/:token')
-  async unregisterDevice(@Param('token') token: string) {
-    return this.communicationService.unregisterDevice(token);
+  async unregisterDevice(@CurrentUser() user: UserIdentity, @Param('token') token: string) {
+    return this.communicationService.unregisterDevice(user.userId, token);
   }
 
   @Get('preferences')
