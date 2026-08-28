@@ -3,6 +3,7 @@ services:
     name: playhub-backend-staging
     runtime: docker
     dockerContext: backend
+    dockerfilePath: backend/Dockerfile
     plan: free
     healthCheckPath: /api/v1/health/readiness
     envVars:
