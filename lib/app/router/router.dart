@@ -1,13 +1,19 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/security/auth_provider.dart';
 import '../../core/models/app_models.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/home/presentation/screens/match_discovery_screen.dart';
+import '../../features/home/presentation/screens/host_match_screen.dart';
+import '../../features/home/presentation/screens/community_feed_screen.dart';
 import '../../features/venues/presentation/screens/venue_details_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/profile/presentation/screens/wallet_screen.dart';
 import '../../features/profile/presentation/screens/notification_preferences_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/signup_screen.dart';
+import '../../features/auth/presentation/screens/forgot_password_screen.dart';
+import '../../features/auth/presentation/screens/email_verification_screen.dart';
 import '../../features/business_dashboard/presentation/screens/business_dashboard_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/notifications/presentation/screens/notification_list_screen.dart';
@@ -31,45 +37,34 @@ import '../../features/admin_dashboard/presentation/screens/city_management_scre
 import '../../features/admin_dashboard/presentation/screens/category_management_screen.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
 
-// Placeholder for screens not yet implemented in detail
-class PlaceholderScreen extends StatelessWidget {
-  final String title;
-  const PlaceholderScreen({super.key, required this.title});
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(title)),
-    body: Center(child: Text('Welcome to $title')),
-  );
-}
-
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
 
   return GoRouter(
     initialLocation: '/login',
     redirect: (context, state) {
-      final isLoggingIn = state.matchedLocation == '/login';
+      final loc = state.matchedLocation;
+      final isAuthFlow = loc == '/login' || loc == '/signup' || loc == '/forgot-password' || loc == '/email-verification';
       final isAuthenticated = authState.isAuthenticated;
 
       if (authState.isInitializing) return null;
 
-      if (!isAuthenticated && !isLoggingIn) {
+      if (!isAuthenticated && !isAuthFlow) {
         return '/login';
       }
 
-      if (isAuthenticated && isLoggingIn) {
+      if (isAuthenticated && isAuthFlow) {
         return '/';
       }
 
       // Role-based route protection
       final user = authState.identity;
       if (user != null) {
-        if (state.matchedLocation.startsWith('/admin-dashboard') && 
-            user.role != UserRole.admin) {
+        if (loc.startsWith('/admin-dashboard') && user.role != UserRole.admin) {
           return '/';
         }
         
-        if (state.matchedLocation.startsWith('/business-dashboard') && 
+        if (loc.startsWith('/business-dashboard') && 
             user.role != UserRole.businessOwner && 
             user.role != UserRole.admin) {
           return '/';
@@ -90,6 +85,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const LoginScreen(),
       ),
       GoRoute(
+        path: '/signup',
+        name: 'signup',
+        builder: (context, state) => const SignUpScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        name: 'forgot_password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/email-verification',
+        name: 'email_verification',
+        builder: (context, state) => const EmailVerificationScreen(),
+      ),
+      GoRoute(
         path: '/search',
         name: 'search',
         builder: (context, state) {
@@ -98,16 +108,30 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '/find-matches',
+        name: 'find_matches',
+        builder: (context, state) => const MatchDiscoveryScreen(),
+      ),
+      GoRoute(
+        path: '/host-match',
+        name: 'host_match',
+        builder: (context, state) => const HostMatchScreen(),
+      ),
+      GoRoute(
+        path: '/community-feed',
+        name: 'community_feed',
+        builder: (context, state) => const CommunityFeedScreen(),
+      ),
+      GoRoute(
+        path: '/wallet',
+        name: 'wallet',
+        builder: (context, state) => const WalletScreen(),
+      ),
+      GoRoute(
         path: '/venue/:id',
         name: 'venue_details',
         builder: (context, state) =>
             VenueDetailsScreen(venueId: state.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: '/booking',
-        name: 'booking',
-        builder: (context, state) =>
-            const PlaceholderScreen(title: 'Booking Confirmation'),
       ),
       GoRoute(
         path: '/profile',
@@ -172,6 +196,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/notifications',
         name: 'notifications',
         builder: (context, state) => const NotificationListScreen(),
+      ),
+      GoRoute(
+        path: '/business/venues/create',
+        name: 'business_venue_create_alias',
+        builder: (context, state) => const VenueCreateScreen(),
+      ),
+      GoRoute(
+        path: '/business/venues/edit/:venueId',
+        name: 'business_venue_edit_alias',
+        builder: (context, state) => VenueEditScreen(
+          venueId: state.pathParameters['venueId']!,
+        ),
       ),
       GoRoute(
         path: '/business-dashboard',

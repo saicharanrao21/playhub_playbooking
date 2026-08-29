@@ -41,22 +41,27 @@ class EnvConfig {
   );
 
   factory EnvConfig.fromEnvironment() {
-    const env = String.fromEnvironment('APP_ENV', defaultValue: 'dev');
+    const env = String.fromEnvironment(
+      'APP_ENV',
+      defaultValue: String.fromEnvironment('ENVIRONMENT', defaultValue: 'staging'),
+    );
     const apiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
     late EnvConfig config;
-    switch (env) {
+    switch (env.toLowerCase()) {
       case 'local':
         config = EnvConfig.local();
         break;
-      case 'staging':
-        config = EnvConfig.staging();
+      case 'dev':
+        config = EnvConfig.dev();
         break;
       case 'prod':
         config = EnvConfig.prod();
         break;
+      case 'staging':
       default:
-        config = EnvConfig.dev();
+        config = EnvConfig.staging();
+        break;
     }
 
     return config.copyWith(

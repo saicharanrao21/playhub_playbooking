@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/admin_provider.dart';
-import '../../../../core/providers/repository_providers.dart';
 import 'package:go_router/go_router.dart';
+import 'package:playhub_playbooking/features/admin_dashboard/presentation/providers/admin_provider.dart';
+import 'package:playhub_playbooking/core/providers/repository_providers.dart';
+import 'package:playhub_playbooking/shared/components/error_view.dart';
+import 'package:playhub_playbooking/shared/components/loading_indicator.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
@@ -22,180 +24,232 @@ class AdminDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final statsAsync = ref.watch(adminStatsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Admin Dashboard')),
+      appBar: AppBar(
+        title: const Text('Admin Console', style: TextStyle(fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => ref.refresh(adminStatsProvider.future),
+          ),
+        ],
+      ),
       body: statsAsync.when(
-        data: (stats) => Row(
-          children: [
-            // Sidebar (Visible on Desktop/Tablet)
-            if (MediaQuery.of(context).size.width > 800)
-              NavigationRail(
-                extended: true,
-                destinations: const [
-                  NavigationRailDestination(
-                    icon: Icon(Icons.dashboard),
-                    label: Text('Dashboard'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.location_city),
-                    label: Text('Cities'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.category),
-                    label: Text('Categories'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.directions_run),
-                    label: Text('Activities'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.business),
-                    label: Text('Organizations'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.settings),
-                    label: Text('Settings'),
-                  ),
-                ],
-                selectedIndex: 0,
-                onDestinationSelected: (int index) {
-                  if (index == 1) context.push('/admin-dashboard/cities');
-                  if (index == 2) context.push('/admin-dashboard/categories');
-                  if (index == 3) context.push('/admin-dashboard/activities');
-                },
-              ),
+        data: (stats) => RefreshIndicator(
+          onRefresh: () => ref.refresh(adminStatsProvider.future),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Platform Overview Header
+                Text(
+                  'Platform Telemetry & Metrics',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 14),
 
-            // Main Content
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () => ref.refresh(adminStatsProvider.future),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.4,
+                  children: [
+                    _buildAdminStatCard(
+                      context,
+                      'Total Users',
+                      '${stats?.totalUsers ?? 0}',
+                      Icons.people_alt_outlined,
+                      Colors.blue,
+                    ),
+                    _buildAdminStatCard(
+                      context,
+                      'Venues',
+                      '${stats?.totalVenues ?? 0}',
+                      Icons.business_outlined,
+                      Colors.green,
+                    ),
+                    _buildAdminStatCard(
+                      context,
+                      'Active Bookings',
+                      '${stats?.activeBookings ?? 0}',
+                      Icons.confirmation_number_outlined,
+                      Colors.orange,
+                    ),
+                    _buildAdminStatCard(
+                      context,
+                      'Pending Reviews',
+                      '${stats?.pendingBusinesses.length ?? 0}',
+                      Icons.verified_user_outlined,
+                      Colors.purple,
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 28),
+
+                // Platform Governance & Configuration
+                Text(
+                  'System Configuration',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+
+                Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Platform Overview',
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: Icon(Icons.location_city, color: colorScheme.primary),
+                        ),
+                        title: const Text('Manage Cities', style: TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: const Text('Add, edit, or configure active operating cities'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/admin-dashboard/cities'),
                       ),
-                      const SizedBox(height: 24),
-                      GridView.count(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisCount: MediaQuery.of(context).size.width > 1200
-                            ? 4
-                            : (MediaQuery.of(context).size.width > 600 ? 2 : 1),
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        childAspectRatio: 1.5,
-                        children: [
-                          _buildAdminStatCard(
-                            'Total Users',
-                            '${stats?.totalUsers ?? 0}',
-                            Icons.people,
-                            Colors.blue,
-                          ),
-                          _buildAdminStatCard(
-                            'Active Venues',
-                            '${stats?.totalVenues ?? 0}',
-                            Icons.business,
-                            Colors.green,
-                          ),
-                          _buildAdminStatCard(
-                            'Active Bookings',
-                            '${stats?.activeBookings ?? 0}',
-                            Icons.book,
-                            Colors.orange,
-                          ),
-                          _buildAdminStatCard(
-                            'Pending Approvals',
-                            '${stats?.pendingBusinesses.length ?? 0}',
-                            Icons.approval,
-                            Colors.purple,
-                          ),
-                        ],
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: Icon(Icons.category, color: colorScheme.primary),
+                        ),
+                        title: const Text('Manage Categories', style: TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: const Text('Configure sport types and venue categories'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/admin-dashboard/categories'),
                       ),
-                      const SizedBox(height: 32),
-                      const Text(
-                        'Recent Organization Requests',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: Icon(Icons.directions_run, color: colorScheme.primary),
+                        ),
+                        title: const Text('Manage Activities', style: TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: const Text('Create game formats and sports activity tags'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/admin-dashboard/activities'),
                       ),
-                      const SizedBox(height: 16),
-                      if (stats != null && stats.pendingBusinesses.isNotEmpty)
-                        Card(
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: stats.pendingBusinesses.length,
-                            separatorBuilder: (context, index) => const Divider(),
-                            itemBuilder: (context, index) {
-                              final biz = stats.pendingBusinesses[index];
-                              return ListTile(
-                                title: Text(biz['displayName'] ?? 'Unknown Business'),
-                                subtitle: Text('Organization: ${biz['organization']?['name'] ?? 'N/A'}'),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    TextButton(
-                                      onPressed: () {},
-                                      child: const Text(
-                                        'Reject',
-                                        style: TextStyle(color: Colors.red),
-                                      ),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () => _approveBusiness(context, ref, biz['id']),
-                                      child: const Text('Approve'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        )
-                      else
-                        const Center(child: Padding(
-                          padding: EdgeInsets.all(32.0),
-                          child: Text('No pending business requests.'),
-                        )),
                     ],
                   ),
                 ),
-              ),
+
+                const SizedBox(height: 28),
+
+                // Organization Approvals
+                Text(
+                  'Pending Venue & Partner Approvals',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+
+                if (stats != null && stats.pendingBusinesses.isNotEmpty)
+                  Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: stats.pendingBusinesses.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final biz = stats.pendingBusinesses[index];
+                        return ListTile(
+                          title: Text(biz['displayName'] ?? 'Sports Partner Request', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text('Org: ${biz['organization']?['name'] ?? 'PlayHub Partner'}'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextButton(
+                                onPressed: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Application rejected.')),
+                                  );
+                                },
+                                child: const Text('Reject', style: TextStyle(color: Colors.red)),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => _approveBusiness(context, ref, biz['id']),
+                                child: const Text('Approve'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  )
+                else
+                  Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    child: const Padding(
+                      padding: EdgeInsets.all(24.0),
+                      child: Center(
+                        child: Text('All venue partner applications are up to date!'),
+                      ),
+                    ),
+                  ),
+
+                const SizedBox(height: 40),
+              ],
             ),
+          ),
+        ),
+        loading: () => ListView(
+          padding: const EdgeInsets.all(16),
+          children: const [
+            SkeletonCard(height: 140),
+            SizedBox(height: 16),
+            SkeletonCard(height: 200),
           ],
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Error loading dashboard: $err')),
+        error: (err, _) => AppErrorView(
+          message: 'Error loading admin dashboard: $err',
+          onRetry: () => ref.refresh(adminStatsProvider.future),
+        ),
       ),
     );
   }
 
   Widget _buildAdminStatCard(
+    BuildContext context,
     String title,
     String value,
     IconData icon,
     Color color,
   ) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Card(
-      elevation: 2,
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(14.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(color: Colors.grey, fontSize: 16),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 20),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
               value,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              title,
+              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 11),
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

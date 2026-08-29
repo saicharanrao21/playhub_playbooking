@@ -21,3 +21,30 @@ class AppLoadingIndicator extends StatelessWidget {
     );
   }
 }
+
+class SkeletonCard extends StatelessWidget {
+  final double height;
+  final double width;
+  final double borderRadius;
+
+  const SkeletonCard({
+    super.key,
+    this.height = 120,
+    this.width = double.infinity,
+    this.borderRadius = 16,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      height: height,
+      width: width,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+    );
+  }
+}

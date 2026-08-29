@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../providers/booking_provider.dart';
-import '../../../availability/presentation/providers/availability_provider.dart';
+import 'package:intl/intl.dart';
+import 'package:playhub_playbooking/features/bookings/presentation/providers/booking_provider.dart';
+import 'package:playhub_playbooking/features/availability/presentation/providers/availability_provider.dart';
+import 'package:playhub_playbooking/shared/components/empty_view.dart';
+import 'package:playhub_playbooking/shared/components/error_view.dart';
+import 'package:playhub_playbooking/shared/components/loading_indicator.dart';
 
 class RescheduleScreen extends ConsumerStatefulWidget {
   final String bookingId;
@@ -19,13 +23,11 @@ class RescheduleScreen extends ConsumerStatefulWidget {
 }
 
 class _RescheduleScreenState extends ConsumerState<RescheduleScreen> {
-  DateTime _selectedDate = DateTime.now();
+  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   bool _isSubmitting = false;
 
   Future<void> _reschedule(DateTime start, DateTime end) async {
-    setState(() {
-      _isSubmitting = true;
-    });
+    setState(() => _isSubmitting = true);
 
     try {
       final repository = ref.read(bookingRepositoryProvider);
@@ -40,7 +42,8 @@ class _RescheduleScreenState extends ConsumerState<RescheduleScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Booking rescheduled successfully!')),
           );
-          context.pop(); // Go back to details
+          ref.read(myBookingsProvider.notifier).loadBookings();
+          context.pop();
         }
       }
     } catch (e) {
@@ -50,68 +53,138 @@ class _RescheduleScreenState extends ConsumerState<RescheduleScreen> {
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = _selectedDate.toIso8601String().split('T')[0];
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
     final availabilityAsync = ref.watch(availabilityFutureProvider(
       AvailabilityQuery(facilityId: widget.facilityId, date: dateStr),
     ));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Reschedule Booking')),
+      appBar: AppBar(
+        title: const Text('Reschedule Booking', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
       body: Column(
         children: [
-          CalendarDatePicker(
-            initialDate: _selectedDate,
-            firstDate: DateTime.now(),
-            lastDate: DateTime.now().add(const Duration(days: 30)),
-            onDateChanged: (date) {
-              setState(() {
-                _selectedDate = date;
-              });
-            },
+          // Date Selector Strip
+          Container(
+            height: 84,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.25),
+              border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.4))),
+            ),
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: 14,
+              separatorBuilder: (c, i) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                final date = DateTime.now().add(Duration(days: index));
+                final isSelected = DateUtils.isSameDay(_selectedDate, date);
+
+                return InkWell(
+                  onTap: () => setState(() => _selectedDate = date),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: 60,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? colorScheme.primary : colorScheme.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isSelected ? colorScheme.primary : colorScheme.outlineVariant.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          DateFormat('E').format(date).toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${date.day}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
-          const Divider(),
+
           if (_isSubmitting)
             const Padding(
               padding: EdgeInsets.all(16.0),
-              child: CircularProgressIndicator(),
+              child: LinearProgressIndicator(),
             ),
+
           Expanded(
             child: availabilityAsync.when(
               data: (availability) {
                 if (availability == null || availability.slots.isEmpty) {
-                  return const Center(child: Text('No slots available for this date.'));
+                  return const EmptyView(
+                    icon: Icons.event_busy,
+                    title: 'No Available Slots',
+                    message: 'Please pick another date to reschedule your booking.',
+                  );
                 }
+
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: availability.slots.length,
                   itemBuilder: (context, index) {
                     final slot = availability.slots[index];
-                    final timeStr = '${slot.start.hour.toString().padLeft(2, '0')}:${slot.start.minute.toString().padLeft(2, '0')}';
-                    
+                    final timeStr = '${DateFormat('h:mm a').format(slot.start)} - ${DateFormat('h:mm a').format(slot.end)}';
+
                     return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       child: ListTile(
-                        title: Text('Start at $timeStr'),
+                        leading: CircleAvatar(
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: Icon(Icons.schedule, color: colorScheme.primary, size: 20),
+                        ),
+                        title: Text(timeStr, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: const Text('Available for reschedule', style: TextStyle(fontSize: 12, color: Colors.green)),
                         trailing: ElevatedButton(
                           onPressed: _isSubmitting ? null : () => _reschedule(slot.start, slot.end),
-                          child: const Text('Select'),
+                          style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: const Text('Confirm'),
                         ),
                       ),
                     );
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(child: Text('Error: $err')),
+              loading: () => ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: 4,
+                itemBuilder: (c, i) => const SkeletonCard(height: 70),
+              ),
+              error: (err, stack) => AppErrorView(
+                message: 'Failed to load slots: $err',
+                onRetry: () => ref.invalidate(availabilityFutureProvider),
+              ),
             ),
           ),
         ],

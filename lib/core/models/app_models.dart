@@ -304,3 +304,143 @@ class Notification {
     this.isRead = false,
   });
 }
+
+enum MatchStatus { open, full, cancelled, completed }
+
+class MatchItem {
+  final String id;
+  final String hostId;
+  final String? venueId;
+  final String venueName;
+  final String location;
+  final String sport;
+  final String title;
+  final String description;
+  final DateTime startTime;
+  final DateTime endTime;
+  final int maxPlayers;
+  final int currentPlayers;
+  final String skillLevelRequired;
+  final double pricePerPlayer;
+  final MatchStatus status;
+  final bool isPrivate;
+
+  MatchItem({
+    required this.id,
+    required this.hostId,
+    this.venueId,
+    required this.venueName,
+    required this.location,
+    required this.sport,
+    required this.title,
+    required this.description,
+    required this.startTime,
+    required this.endTime,
+    required this.maxPlayers,
+    this.currentPlayers = 1,
+    required this.skillLevelRequired,
+    required this.pricePerPlayer,
+    this.status = MatchStatus.open,
+    this.isPrivate = false,
+  });
+
+  factory MatchItem.fromJson(Map<String, dynamic> json) {
+    return MatchItem(
+      id: json['id'] ?? '',
+      hostId: json['hostId'] ?? '',
+      venueId: json['venueId'],
+      venueName: json['venueName'] ?? 'PlayHub Arena',
+      location: json['location'] ?? 'Hyderabad',
+      sport: json['sport'] ?? 'Football',
+      title: json['title'] ?? 'Sports Match',
+      description: json['description'] ?? '',
+      startTime: json['startTime'] != null ? DateTime.parse(json['startTime']) : DateTime.now().add(const Duration(days: 1)),
+      endTime: json['endTime'] != null ? DateTime.parse(json['endTime']) : DateTime.now().add(const Duration(days: 1, hours: 2)),
+      maxPlayers: json['maxPlayers'] ?? 10,
+      currentPlayers: json['currentPlayers'] ?? 1,
+      skillLevelRequired: json['skillLevelRequired'] ?? 'All Levels',
+      pricePerPlayer: (json['pricePerPlayer'] as num?)?.toDouble() ?? 150.0,
+      status: MatchStatus.values.firstWhere((e) => e.name == json['status'], orElse: () => MatchStatus.open),
+      isPrivate: json['isPrivate'] ?? false,
+    );
+  }
+}
+
+class CommunityItem {
+  final String id;
+  final String name;
+  final String description;
+  final String? avatarUrl;
+  final String sport;
+  final int memberCount;
+  final bool isJoined;
+
+  CommunityItem({
+    required this.id,
+    required this.name,
+    required this.description,
+    this.avatarUrl,
+    required this.sport,
+    this.memberCount = 1,
+    this.isJoined = false,
+  });
+}
+
+class CommunityPostItem {
+  final String id;
+  final String authorName;
+  final String? authorAvatar;
+  final String communityName;
+  final String content;
+  final String? imageUrl;
+  final int likes;
+  final int comments;
+  final DateTime createdAt;
+  final bool isLiked;
+
+  CommunityPostItem({
+    required this.id,
+    required this.authorName,
+    this.authorAvatar,
+    required this.communityName,
+    required this.content,
+    this.imageUrl,
+    this.likes = 0,
+    this.comments = 0,
+    required this.createdAt,
+    this.isLiked = false,
+  });
+}
+
+class WalletInfo {
+  final String id;
+  final String userId;
+  final double balance;
+  final String currency;
+
+  WalletInfo({
+    required this.id,
+    required this.userId,
+    required this.balance,
+    this.currency = 'INR',
+  });
+}
+
+class WalletTransactionItem {
+  final String id;
+  final String title;
+  final String subtitle;
+  final double amount;
+  final bool isCredit;
+  final DateTime createdAt;
+
+  WalletTransactionItem({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    required this.amount,
+    required this.isCredit,
+    required this.createdAt,
+  });
+}
+
