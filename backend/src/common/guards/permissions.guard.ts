@@ -22,13 +22,18 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Insufficient permissions');
     }
 
-    // Platform Admins bypass individual permission checks
-    if (user.roles?.includes('PLATFORM_ADMIN') || user.isPlatformAdmin) {
+    // Platform Admins and Super Admins bypass individual permission checks
+    if (
+      user.roles?.includes('PLATFORM_ADMIN') ||
+      user.roles?.includes('PLAYHUB_SUPER_ADMIN') ||
+      user.isPlatformAdmin ||
+      user.permissions.includes('*')
+    ) {
       return true;
     }
 
     const hasPermission = requiredPermissions.every((permission) =>
-      user.permissions.includes(permission),
+      user.permissions.includes(permission) || user.permissions.includes('*'),
     );
 
     if (!hasPermission) {
