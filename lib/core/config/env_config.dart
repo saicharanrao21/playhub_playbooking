@@ -28,7 +28,7 @@ class EnvConfig {
 
   factory EnvConfig.staging() => const EnvConfig(
     environment: AppEnvironment.staging,
-    apiBaseUrl: 'https://staging-api.playhub.com/api/v1',
+    apiBaseUrl: 'https://playhub-backend-staging.onrender.com/api/v1',
     enableLogging: true,
     enableAnalytics: true,
   );

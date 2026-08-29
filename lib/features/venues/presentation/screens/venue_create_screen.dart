@@ -112,7 +112,7 @@ class _VenueCreateScreenState extends ConsumerState<VenueCreateScreen> {
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const LinearProgressIndicator();
                 return DropdownButtonFormField<String>(
-                  value: _selectedCityId,
+                  initialValue: _selectedCityId,
                   decoration: const InputDecoration(labelText: 'City'),
                   items: snapshot.data!.map((c) => DropdownMenuItem(
                     value: c.id,

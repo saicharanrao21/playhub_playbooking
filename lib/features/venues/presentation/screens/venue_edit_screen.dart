@@ -106,7 +106,7 @@ class _VenueEditScreenState extends ConsumerState<VenueEditScreen> {
               validator: (v) => v == null || v.isEmpty ? 'Required' : null,
             ),
             DropdownButtonFormField<VenueStatus>(
-              value: _status,
+              initialValue: _status,
               decoration: const InputDecoration(labelText: 'Status'),
               items: VenueStatus.values.map((s) => DropdownMenuItem(
                 value: s,

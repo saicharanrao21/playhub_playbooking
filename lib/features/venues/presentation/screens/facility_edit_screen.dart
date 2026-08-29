@@ -101,7 +101,7 @@ class _FacilityEditScreenState extends ConsumerState<FacilityEditScreen> {
               maxLines: 3,
             ),
             DropdownButtonFormField<FacilityStatus>(
-              value: _status,
+              initialValue: _status,
               decoration: const InputDecoration(labelText: 'Status'),
               items: FacilityStatus.values.map((s) => DropdownMenuItem(
                 value: s,

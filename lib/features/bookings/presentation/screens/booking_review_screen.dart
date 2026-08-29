@@ -54,45 +54,42 @@ class _BookingReviewScreenState extends ConsumerState<BookingReviewScreen> {
         throw Exception('Failed to create booking');
       }
 
-      // 2. Initiate Payment Order
-      final order = await paymentRepo.createOrder(booking.id);
-      if (order == null) {
-        throw Exception('Failed to initiate payment order');
-      }
-
-      // 3. Trigger Payment Provider
-      if (order.provider == PaymentProvider.mock) {
-        final verified = await paymentRepo.verifyPayment(
-          providerOrderId: order.id,
-          providerPaymentId: 'pay_simulated_${booking.id}',
-          signature: 'valid_simulated_sig',
+      try {
+        // 2. Initiate Payment Order
+        final order = await paymentRepo.createOrder(
+          booking.id,
+          provider: PaymentProvider.mock,
         );
-
-        if (mounted) {
-          if (verified) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Booking confirmed successfully!')),
-            );
-            context.go('/bookings'); 
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Payment verification failed. Please check your bookings.')),
-            );
+        if (order != null && order.provider == PaymentProvider.mock) {
+          final verified = await paymentRepo.verifyPayment(
+            providerOrderId: order.providerOrderId,
+            providerPaymentId: 'pay_simulated_${booking.id}',
+            signature: 'valid_simulated_sig',
+          );
+          if (mounted) {
+            if (verified) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Booking confirmed successfully!')),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Booking created (Pending Payment).')),
+              );
+            }
             context.go('/bookings');
           }
+          return;
         }
-      } else {
-        // Real provider flow
+      } catch (_) {
+        // Payment order error / blocked mock in production environment
+        // The booking remains safely in PENDING status
+      }
+
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Redirecting to ${order.provider.name.toUpperCase()}...')),
+          const SnackBar(content: Text('Booking created! Status: PENDING.')),
         );
-        
-        if (mounted) {
-          context.go('/bookings');
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please complete the payment in the provider popup.')),
-          );
-        }
+        context.go('/bookings');
       }
     } catch (e) {
       if (mounted) {

@@ -30,7 +30,7 @@ class ActivityManagementScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                value: selectedCategoryId,
+                initialValue: selectedCategoryId,
                 decoration: const InputDecoration(labelText: 'Category'),
                 items: categories.map((c) => DropdownMenuItem(
                   value: c.id,

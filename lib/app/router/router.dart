@@ -127,6 +127,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const BookingListScreen(),
       ),
       GoRoute(
+        path: '/booking/review',
+        name: 'booking_review',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return BookingReviewScreen(
+            facilityId: extra['facilityId'],
+            facilityName: extra['facilityName'],
+            startTime: DateTime.parse(extra['startTime']),
+            endTime: DateTime.parse(extra['endTime']),
+          );
+        },
+      ),
+      GoRoute(
         path: '/booking/:id',
         name: 'booking_details',
         builder: (context, state) =>
@@ -152,19 +165,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           return AvailabilityScreen(
             facilityId: facilityId,
             facilityName: extra?['facilityName'],
-          );
-        },
-      ),
-      GoRoute(
-        path: '/booking/review',
-        name: 'booking_review',
-        builder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>;
-          return BookingReviewScreen(
-            facilityId: extra['facilityId'],
-            facilityName: extra['facilityName'],
-            startTime: DateTime.parse(extra['startTime']),
-            endTime: DateTime.parse(extra['endTime']),
           );
         },
       ),

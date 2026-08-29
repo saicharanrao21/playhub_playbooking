@@ -91,7 +91,7 @@ class _FacilityCreateScreenState extends ConsumerState<FacilityCreateScreen> {
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const LinearProgressIndicator();
                 return DropdownButtonFormField<String>(
-                  value: _selectedCategoryId,
+                  initialValue: _selectedCategoryId,
                   decoration: const InputDecoration(labelText: 'Category'),
                   items: snapshot.data!.map((c) => DropdownMenuItem(
                     value: c.id,
