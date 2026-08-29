@@ -3,29 +3,52 @@ import '../storage/storage_interface.dart';
 
 /// Secure storage implementation for sensitive data.
 ///
-/// Uses Android Keystore and iOS Keychain.
+/// Uses Android Keystore and iOS Keychain with automatic recovery on reset.
 class SecureStorage implements IStorage {
   final FlutterSecureStorage _storage;
 
-  SecureStorage([this._storage = const FlutterSecureStorage()]);
+  SecureStorage([
+    this._storage = const FlutterSecureStorage(
+      aOptions: AndroidOptions(
+        encryptedSharedPreferences: true,
+        resetOnError: true,
+      ),
+    ),
+  ]);
 
   @override
   Future<void> write(String key, String value) async {
-    await _storage.write(key: key, value: value);
+    try {
+      await _storage.write(key: key, value: value);
+    } catch (_) {
+      // Fallback
+    }
   }
 
   @override
   Future<String?> read(String key) async {
-    return await _storage.read(key: key);
+    try {
+      return await _storage.read(key: key);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
   Future<void> delete(String key) async {
-    await _storage.delete(key: key);
+    try {
+      await _storage.delete(key: key);
+    } catch (_) {
+      // Fallback
+    }
   }
 
   @override
   Future<void> clear() async {
-    await _storage.deleteAll();
+    try {
+      await _storage.deleteAll();
+    } catch (_) {
+      // Fallback
+    }
   }
 }

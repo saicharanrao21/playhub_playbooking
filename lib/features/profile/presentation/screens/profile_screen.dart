@@ -173,35 +173,33 @@ class ProfileScreen extends ConsumerWidget {
 
           const SizedBox(height: 16),
 
-          // Section 2: Management & Admin (Role-aware)
-          if (ref.hasRole(UserRole.businessOwner) || ref.hasRole(UserRole.admin)) ...[
-            _buildSectionHeader(context, 'Partner & Management'),
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Column(
-                children: [
+          // Section 2: Partner & Venue Management
+          _buildSectionHeader(context, 'Partner & Management'),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Column(
+              children: [
+                _buildMenuItem(
+                  context,
+                  Icons.business_center_outlined,
+                  'Partner & Venue Hub',
+                  'Register sports business, manage courts & live bookings',
+                  () => context.push('/partner'),
+                ),
+                if (ref.hasRole(UserRole.admin)) ...[
+                  const Divider(height: 1),
                   _buildMenuItem(
                     context,
-                    Icons.business_center_outlined,
-                    'Business Dashboard',
-                    'Manage venues, facilities, pricing, and revenue',
-                    () => context.push('/business-dashboard'),
+                    Icons.admin_panel_settings_outlined,
+                    'Admin Dashboard',
+                    'Platform statistics, approvals, and RBAC control',
+                    () => context.push('/admin-dashboard'),
                   ),
-                  if (ref.hasRole(UserRole.admin)) ...[
-                    const Divider(height: 1),
-                    _buildMenuItem(
-                      context,
-                      Icons.admin_panel_settings_outlined,
-                      'Admin Dashboard',
-                      'Platform statistics, approvals, and RBAC control',
-                      () => context.push('/admin-dashboard'),
-                    ),
-                  ],
                 ],
-              ),
+              ],
             ),
-            const SizedBox(height: 16),
-          ],
+          ),
+          const SizedBox(height: 16),
 
           // Section 3: Preferences & Settings
           _buildSectionHeader(context, 'Settings & Preferences'),

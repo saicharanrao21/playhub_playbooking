@@ -23,7 +23,7 @@ class AuthRepositoryImpl implements IAuthRepository {
     final token = await _tokenStorage.readAccessToken();
     if (token != null) {
       try {
-        final identity = await _fetchProfile();
+        final identity = await _fetchProfile(token);
         if (identity != null) {
           _currentIdentity = identity;
           _identityController.add(_currentIdentity);
@@ -33,7 +33,6 @@ class AuthRepositoryImpl implements IAuthRepository {
         }
       } catch (e) {
         AppLogger.error('Failed to restore session profile', e);
-        // On error (e.g. network), we keep it as null to force re-auth or stay in initializing
         _identityController.add(null);
       }
     } else {
@@ -46,36 +45,85 @@ class AuthRepositoryImpl implements IAuthRepository {
   Future<UserIdentity?> login(String email, String password) async {
     AppLogger.info('Attempting login for: $email');
 
-    final response = await _apiClient.post(
-      '/auth/login',
-      data: {'email': email, 'password': password},
-      authenticated: false,
-    );
+    try {
+      final response = await _apiClient.post(
+        '/auth/login',
+        data: {'email': email, 'password': password},
+        authenticated: false,
+      );
 
-    if (response.isSuccess) {
-      final data = response.data as Map<String, dynamic>;
-      final access = data['accessToken'];
-      final refresh = data['refreshToken'];
+      if (response.isSuccess && response.data != null) {
+        final data = response.data as Map<String, dynamic>;
+        final access = data['accessToken']?.toString() ?? '';
+        final refresh = data['refreshToken']?.toString() ?? '';
 
-      // Temporarily save tokens to allow profile fetch
-      await _tokenStorage.saveAccessToken(access);
-      await _tokenStorage.saveRefreshToken(refresh);
+        await _tokenStorage.saveAccessToken(access);
+        await _tokenStorage.saveRefreshToken(refresh);
 
-      final identity = await _fetchProfile();
-      if (identity != null) {
-        await _saveSession(access, refresh, identity);
-        return identity;
+        final identity = await _fetchProfile(access);
+        if (identity != null) {
+          await _saveSession(access, refresh, identity);
+          return identity;
+        }
       }
+    } catch (e) {
+      AppLogger.error('Login request failed', e);
     }
 
     AppLogger.warning('Login failed for: $email');
     return null;
   }
 
-  Future<UserIdentity?> _fetchProfile() async {
-    final response = await _apiClient.get('/auth/me');
-    if (response.isSuccess) {
-      return UserIdentity.fromJson(response.data);
+  @override
+  Future<UserIdentity?> refreshSession() async {
+    final refreshToken = await _tokenStorage.readRefreshToken();
+    if (refreshToken == null) {
+      await handleSessionExpired();
+      return null;
+    }
+
+    try {
+      final response = await _apiClient.post(
+        '/auth/refresh',
+        data: {'refreshToken': refreshToken},
+        authenticated: false,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        final data = response.data as Map<String, dynamic>;
+        final access = data['accessToken']?.toString() ?? '';
+        final newRefresh = data['refreshToken']?.toString() ?? '';
+
+        await _tokenStorage.saveAccessToken(access);
+        await _tokenStorage.saveRefreshToken(newRefresh);
+
+        final identity = await _fetchProfile(access);
+        if (identity != null) {
+          await _saveSession(access, newRefresh, identity);
+          return identity;
+        }
+      }
+    } catch (e) {
+      AppLogger.error('Session refresh failed', e);
+    }
+
+    await handleSessionExpired();
+    return null;
+  }
+
+  Future<UserIdentity?> _fetchProfile([String? explicitToken]) async {
+    try {
+      final token = explicitToken ?? await _tokenStorage.readAccessToken();
+      final headers = token != null ? {'Authorization': 'Bearer $token'} : null;
+      final response = await _apiClient.get(
+        '/auth/me',
+        headers: headers,
+      );
+      if (response.isSuccess && response.data != null) {
+        return UserIdentity.fromJson(Map<String, dynamic>.from(response.data as Map));
+      }
+    } catch (e) {
+      AppLogger.error('Failed to fetch profile', e);
     }
     return null;
   }
@@ -88,29 +136,33 @@ class AuthRepositoryImpl implements IAuthRepository {
   ) async {
     AppLogger.info('Attempting registration for: $email');
 
-    final response = await _apiClient.post(
-      '/auth/register',
-      data: {
-        'email': email,
-        'password': password,
-        'fullName': fullName,
-      },
-      authenticated: false,
-    );
+    try {
+      final response = await _apiClient.post(
+        '/auth/register',
+        data: {
+          'email': email,
+          'password': password,
+          'fullName': fullName,
+        },
+        authenticated: false,
+      );
 
-    if (response.isSuccess) {
-      final data = response.data as Map<String, dynamic>;
-      final access = data['accessToken'];
-      final refresh = data['refreshToken'];
+      if (response.isSuccess && response.data != null) {
+        final data = response.data as Map<String, dynamic>;
+        final access = data['accessToken']?.toString() ?? '';
+        final refresh = data['refreshToken']?.toString() ?? '';
 
-      await _tokenStorage.saveAccessToken(access);
-      await _tokenStorage.saveRefreshToken(refresh);
+        await _tokenStorage.saveAccessToken(access);
+        await _tokenStorage.saveRefreshToken(refresh);
 
-      final identity = await _fetchProfile();
-      if (identity != null) {
-        await _saveSession(access, refresh, identity);
-        return identity;
+        final identity = await _fetchProfile(access);
+        if (identity != null) {
+          await _saveSession(access, refresh, identity);
+          return identity;
+        }
       }
+    } catch (e) {
+      AppLogger.error('Registration request failed', e);
     }
 
     AppLogger.warning('Registration failed for: $email');
@@ -119,68 +171,28 @@ class AuthRepositoryImpl implements IAuthRepository {
 
   @override
   Future<void> logout() async {
-    AppLogger.info('Logging out...');
+    AppLogger.info('Logging out user...');
     try {
       await _apiClient.post('/auth/logout');
     } catch (e) {
-      AppLogger.error('Server-side logout failed', e);
+      AppLogger.warning('Backend logout failed: $e');
     }
-
-    await _tokenStorage.clearTokens();
-    _currentIdentity = null;
-    _identityController.add(null);
-  }
-
-  @override
-  Future<UserIdentity?> refreshSession() async {
-    AppLogger.info('Refreshing session manually...');
-    final refreshToken = await _tokenStorage.readRefreshToken();
-    if (refreshToken == null) return null;
-
-    final response = await _apiClient.post(
-      '/auth/refresh',
-      data: {'refreshToken': refreshToken},
-      authenticated: false,
-    );
-
-    if (response.isSuccess) {
-      final data = response.data as Map<String, dynamic>;
-      final access = data['accessToken'];
-      final refresh = data['refreshToken'];
-
-      if (_currentIdentity != null) {
-        // Just refresh tokens, keep identity but maybe update organization if needed?
-        // Usually, we just update the tokens.
-        await _tokenStorage.saveAccessToken(access);
-        await _tokenStorage.saveRefreshToken(refresh);
-      } else {
-        // If identity was lost but tokens work, try to fetch profile
-        await _tokenStorage.saveAccessToken(access);
-        await _tokenStorage.saveRefreshToken(refresh);
-        final identity = await _fetchProfile();
-        if (identity != null) {
-           _currentIdentity = identity;
-           _identityController.add(_currentIdentity);
-        }
-      }
-      return _currentIdentity;
-    }
-    return null;
+    await handleSessionExpired();
   }
 
   @override
   UserIdentity? getCurrentIdentity() => _currentIdentity;
 
   @override
+  Stream<UserIdentity?> get identityChanges => _identityController.stream;
+
+  @override
   Future<void> handleSessionExpired() async {
-    AppLogger.warning('Session expired or compromised. Clearing local state.');
+    AppLogger.info('Handling session expiration...');
     await _tokenStorage.clearTokens();
     _currentIdentity = null;
     _identityController.add(null);
   }
-
-  @override
-  Stream<UserIdentity?> get identityChanges => _identityController.stream;
 
   Future<void> _saveSession(
     String access,
@@ -191,5 +203,6 @@ class AuthRepositoryImpl implements IAuthRepository {
     await _tokenStorage.saveRefreshToken(refresh);
     _currentIdentity = identity;
     _identityController.add(_currentIdentity);
+    AppLogger.info('Session saved for user: ${identity.email}');
   }
 }

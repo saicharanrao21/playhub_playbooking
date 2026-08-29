@@ -1,7 +1,8 @@
-import { Controller, Get, Patch, Body, UseGuards, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, UseGuards, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { OrganizationsService } from './organizations.service';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
+import { OnboardPartnerDto } from './dto/onboard-partner.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
@@ -26,6 +27,21 @@ export class OrganizationsController {
       skip: pagination.skip,
       take: pagination.limit,
     });
+  }
+
+  @Get('my')
+  @ApiOperation({ summary: 'Get current user memberships and organizations' })
+  async getMyOrganizations(@CurrentUser() user: UserIdentity) {
+    return this.organizationsService.getUserOrganizations(user.userId);
+  }
+
+  @Post('onboard')
+  @ApiOperation({ summary: 'Onboard a new partner organization and business' })
+  async onboardPartner(
+    @CurrentUser() user: UserIdentity,
+    @Body() dto: OnboardPartnerDto,
+  ) {
+    return this.organizationsService.onboardPartner(user.userId, dto);
   }
 
   @Get('dashboard/stats')

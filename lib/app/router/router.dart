@@ -42,6 +42,13 @@ import '../../features/admin_dashboard/presentation/screens/city_management_scre
 import '../../features/admin_dashboard/presentation/screens/category_management_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/activity_management_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/user_management_screen.dart';
+import '../../features/partner/presentation/screens/partner_entry_screen.dart';
+import '../../features/partner/presentation/screens/partner_onboarding_screen.dart';
+import '../../features/partner/presentation/screens/partner_shell_screen.dart';
+import '../../features/partner/presentation/screens/partner_venue_create_screen.dart';
+import '../../features/partner/presentation/screens/partner_venue_details_screen.dart';
+import '../../features/partner/presentation/screens/partner_facility_create_screen.dart';
+import '../../features/partner/presentation/screens/partner_kyc_status_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -341,6 +348,50 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+      GoRoute(
+        path: '/partner',
+        name: 'partner_entry',
+        builder: (context, state) => const PartnerEntryScreen(),
+        routes: [
+          GoRoute(
+            path: 'onboarding',
+            name: 'partner_onboarding',
+            builder: (context, state) => const PartnerOnboardingScreen(),
+          ),
+          GoRoute(
+            path: 'workspace',
+            name: 'partner_workspace',
+            builder: (context, state) => const PartnerShellScreen(),
+          ),
+          GoRoute(
+            path: 'kyc-status',
+            name: 'partner_kyc_status',
+            builder: (context, state) => const PartnerKYCStatusScreen(),
+          ),
+          GoRoute(
+            path: 'venues/create',
+            name: 'partner_venue_create',
+            builder: (context, state) => const PartnerVenueCreateScreen(),
+          ),
+          GoRoute(
+            path: 'venues/:venueId',
+            name: 'partner_venue_details',
+            builder: (context, state) => PartnerVenueDetailsScreen(
+              venueId: state.pathParameters['venueId']!,
+            ),
+            routes: [
+              GoRoute(
+                path: 'facilities/create',
+                name: 'partner_facility_create',
+                builder: (context, state) => PartnerFacilityCreateScreen(
+                  venueId: state.pathParameters['venueId']!,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     ],
   );
 });
+

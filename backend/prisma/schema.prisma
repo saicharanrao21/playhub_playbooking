@@ -25,6 +25,15 @@ enum OrganizationStatus {
   ARCHIVED
 }
 
+enum KYCStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  RESUBMISSION_REQUIRED
+}
+
 enum BusinessStatus {
   PENDING_ONBOARDING
   ACTIVE
@@ -156,6 +165,14 @@ model Organization {
   status    OrganizationStatus @default(ACTIVE)
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
+
+  kycStatus         KYCStatus @default(DRAFT)
+  panNumber         String?
+  gstNumber         String?
+  accountHolderName String?
+  accountNumber     String?
+  ifscCode          String?
+  bankName          String?
 
   memberships   Membership[]
   businesses    Business[]

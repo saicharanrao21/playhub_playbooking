@@ -14,9 +14,9 @@ class OrganizationInfo {
 
   factory OrganizationInfo.fromJson(Map<String, dynamic> json) {
     return OrganizationInfo(
-      id: json['id'],
-      name: json['name'],
-      slug: json['slug'],
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? '',
     );
   }
 }
@@ -38,24 +38,36 @@ class OrganizationMembership {
   });
 
   factory OrganizationMembership.fromJson(Map<String, dynamic> json) {
-    final rolesList = (json['roles'] as List?)?.map((r) => r['name'] as String).toList() ?? [];
+    final rolesRaw = json['roles'] as List<dynamic>? ?? [];
+    final rolesList = <String>[];
     final permissionsSet = <String>{};
-    
-    if (json['roles'] != null) {
-      for (final role in json['roles']) {
-        final perms = role['permissions'] as List?;
+
+    for (final role in rolesRaw) {
+      if (role is Map) {
+        if (role['name'] != null) {
+          rolesList.add(role['name'].toString());
+        }
+        final perms = role['permissions'] as List<dynamic>?;
         if (perms != null) {
           for (final p in perms) {
-            permissionsSet.add('${p['action']}:${p['resource']}');
+            if (p is Map) {
+              permissionsSet.add('${p['action']}:${p['resource']}');
+            }
           }
         }
+      } else if (role is String) {
+        rolesList.add(role);
       }
     }
 
+    final orgMap = json['organization'] is Map
+        ? Map<String, dynamic>.from(json['organization'] as Map)
+        : <String, dynamic>{'id': json['organizationId']?.toString() ?? '', 'name': 'Organization', 'slug': 'org'};
+
     return OrganizationMembership(
-      id: json['id'],
-      organizationId: json['organizationId'],
-      organization: OrganizationInfo.fromJson(json['organization']),
+      id: json['id']?.toString() ?? '',
+      organizationId: json['organizationId']?.toString() ?? '',
+      organization: OrganizationInfo.fromJson(orgMap),
       roles: rolesList,
       permissions: permissionsSet.toList(),
     );
@@ -93,10 +105,11 @@ class UserIdentity {
   }
 
   factory UserIdentity.fromJson(Map<String, dynamic> json) {
-    final memberships = (json['memberships'] as List?)
-            ?.map((m) => OrganizationMembership.fromJson(m))
-            .toList() ??
-        [];
+    final membershipsRaw = json['memberships'] as List<dynamic>? ?? [];
+    final memberships = membershipsRaw
+        .whereType<Map>()
+        .map((m) => OrganizationMembership.fromJson(Map<String, dynamic>.from(m)))
+        .toList();
 
     // Resolve global role: if any membership has ADMIN/PLATFORM_ADMIN, they are admin globally for UI purposes.
     UserRole resolvedRole = UserRole.customer;
@@ -105,15 +118,15 @@ class UserIdentity {
         resolvedRole = UserRole.admin;
         break;
       }
-      if (m.roles.contains('BUSINESS_OWNER') && resolvedRole != UserRole.admin) {
+      if ((m.roles.contains('BUSINESS_OWNER') || m.roles.contains('PARTNER_OWNER')) && resolvedRole != UserRole.admin) {
         resolvedRole = UserRole.businessOwner;
       }
     }
 
     return UserIdentity(
-      id: json['id'],
-      email: json['email'],
-      name: json['fullName'] ?? '',
+      id: json['id']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      name: (json['fullName'] ?? json['name'] ?? '').toString(),
       role: resolvedRole,
       memberships: memberships,
     );
