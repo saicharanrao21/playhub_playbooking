@@ -20,6 +20,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { ActivitiesModule } from './activities/activities.module';
 import { DiscoveryModule } from './discovery/discovery.module';
 import { MediaModule } from './media/media.module';
+import { FinanceModule } from './finance/finance.module';
 import { AdminModule } from './admin/admin.module';
 import { HealthController } from './health/health.controller';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
@@ -61,6 +62,7 @@ import { validate } from './common/config/env.validation';
     ActivitiesModule,
     DiscoveryModule,
     MediaModule,
+    FinanceModule,
     AdminModule,
   ],
   controllers: [HealthController],

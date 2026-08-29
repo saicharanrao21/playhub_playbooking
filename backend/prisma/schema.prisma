@@ -135,6 +135,22 @@ enum CommunicationStatus {
   SKIPPED
 }
 
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum FinancialTransactionType {
+  PAYMENT
+  REFUND
+  PAYOUT
+  COMMISSION
+  ADJUSTMENT
+}
+
 model User {
   id              String        @id @default(uuid())
   email           String        @unique
@@ -186,6 +202,11 @@ model Organization {
   notifications Notification[]
   media         Media[]
   checkIns      CheckIn[]
+  financialTransactions FinancialTransaction[]
+  ledgerEntries         LedgerEntry[]
+  settlements           Settlement[]
+  payouts               Payout[]
+  commissionConfigs     CommissionConfig[]
 
   @@map("organizations")
 }
@@ -386,6 +407,7 @@ model Booking {
   payments     Payment[]
   notifications Notification[]
   checkIn       CheckIn?
+  financialTransactions FinancialTransaction[]
 
   @@index([organizationId])
   @@index([facilityId])
@@ -469,6 +491,7 @@ model Payment {
 
   organization Organization @relation(fields: [organizationId], references: [id])
   booking      Booking      @relation(fields: [bookingId], references: [id])
+  financialTransactions FinancialTransaction[]
 
   @@index([organizationId])
   @@index([bookingId])
@@ -672,4 +695,122 @@ model CheckIn {
   @@index([venueId])
   @@index([bookingId])
   @@map("check_ins")
+}
+
+model FinancialTransaction {
+  id             String                   @id @default(uuid())
+  organizationId String
+  userId         String?
+  type           FinancialTransactionType
+  status         String                   @default("COMPLETED")
+  amount         Decimal                  @db.Decimal(12, 2)
+  currency       String                   @default("INR")
+  description    String?
+
+  referenceType  String? // e.g. 'BOOKING', 'PAYMENT', 'SETTLEMENT'
+  referenceId    String?
+
+  bookingId      String?
+  paymentId      String?
+  settlementId   String?
+  payoutId       String?
+
+  idempotencyKey String?                  @unique
+  metadata       Json?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  booking      Booking?     @relation(fields: [bookingId], references: [id])
+  payment      Payment?     @relation(fields: [paymentId], references: [id])
+  settlement   Settlement?  @relation(fields: [settlementId], references: [id])
+  payout       Payout?      @relation(fields: [payoutId], references: [id])
+  ledgerEntries LedgerEntry[]
+
+  @@index([organizationId])
+  @@index([bookingId])
+  @@index([paymentId])
+  @@index([type])
+  @@map("financial_transactions")
+}
+
+model LedgerEntry {
+  id                     String   @id @default(uuid())
+  financialTransactionId String
+  organizationId         String?
+  account                String // e.g. 'PARTNER_PAYABLE', 'PLATFORM_REVENUE'
+  debit                  Decimal  @default(0) @db.Decimal(12, 2)
+  credit                 Decimal  @default(0) @db.Decimal(12, 2)
+  currency               String   @default("INR")
+  createdAt              DateTime @default(now())
+
+  transaction  FinancialTransaction @relation(fields: [financialTransactionId], references: [id])
+  organization Organization?        @relation(fields: [organizationId], references: [id])
+
+  @@index([financialTransactionId])
+  @@index([organizationId])
+  @@index([account])
+  @@map("ledger_entries")
+}
+
+model Settlement {
+  id             String   @id @default(uuid())
+  organizationId String
+  status         String   @default("PENDING") // PENDING, FINALIZED, PAID
+  startDate      DateTime
+  endDate        DateTime
+  grossAmount    Decimal  @db.Decimal(12, 2)
+  netAmount      Decimal  @db.Decimal(12, 2)
+  commission     Decimal  @db.Decimal(12, 2)
+  currency       String   @default("INR")
+  metadata       Json?
+  finalizedAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization  Organization @relation(fields: [organizationId], references: [id])
+  transactions  FinancialTransaction[]
+  payout        Payout?
+
+  @@index([organizationId])
+  @@map("settlements")
+}
+
+model Payout {
+  id                String       @id @default(uuid())
+  organizationId    String
+  settlementId      String?      @unique
+  amount            Decimal      @db.Decimal(12, 2)
+  currency          String       @default("INR")
+  status            PayoutStatus @default(PENDING)
+  provider          String?      @default("MOCK")
+  providerReference String?
+  failureReason     String?
+  metadata          Json?
+  initiatedAt       DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  settlement   Settlement?  @relation(fields: [settlementId], references: [id])
+  transactions FinancialTransaction[]
+
+  @@index([organizationId])
+  @@map("payouts")
+}
+
+model CommissionConfig {
+  id             String   @id @default(uuid())
+  organizationId String?  @unique // Null means global default
+  percentage     Decimal  @db.Decimal(5, 2) // e.g. 10.00
+  fixedFee       Decimal  @default(0) @db.Decimal(12, 2)
+  currency       String   @default("INR")
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@map("commission_configs")
 }

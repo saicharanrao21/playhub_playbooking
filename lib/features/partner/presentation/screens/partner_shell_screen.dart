@@ -234,8 +234,18 @@ class _PartnerDashboardTab extends ConsumerWidget {
                 Expanded(
                   child: _buildActionBtn(
                     context,
+                    icon: Icons.payments_outlined,
+                    label: 'Finance',
+                    color: Colors.orange,
+                    onTap: () => context.push('/partner/finance'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildActionBtn(
+                    context,
                     icon: Icons.qr_code_scanner,
-                    label: 'Check-in Pass',
+                    label: 'Scanner',
                     color: Colors.teal,
                     onTap: () => context.push('/partner/bookings/scanner'),
                   ),

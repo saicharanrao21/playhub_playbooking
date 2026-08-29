@@ -53,6 +53,7 @@ import '../../features/partner/presentation/screens/partner_pricing_rules_screen
 import '../../features/partner/presentation/screens/partner_pricing_rule_create_screen.dart';
 import '../../features/partner/presentation/screens/partner_booking_details_screen.dart';
 import '../../features/partner/presentation/screens/partner_qr_scanner_screen.dart';
+import '../../features/partner/presentation/screens/partner_finance_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -402,6 +403,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => PartnerBookingDetailsScreen(
                   bookingId: state.pathParameters['bookingId']!,
                 ),
+              ),
+              GoRoute(
+                path: 'finance',
+                name: 'partner_finance',
+                builder: (context, state) => const PartnerFinanceScreen(),
               ),
               GoRoute(
                 path: 'facilities/:facilityId/pricing',

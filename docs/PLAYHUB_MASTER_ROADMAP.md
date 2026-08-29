@@ -29,7 +29,7 @@
 ### Phase 56: Real-Time Booking Operations & Fast QR Check-in ✅
 - **Objective**: Instant booking push alerts with Accept/Reject, on-ground QR ticket scanning, Arrived / No-Show logging.
 
-### Phase 57: Partner Business Finance, Ledger & Payouts
+### Phase 57: Partner Business Finance, Ledger & Payouts ✅
 - **Objective**: Gross booking value reporting, commission calculations, payout requests, and GST invoices.
 
 ---

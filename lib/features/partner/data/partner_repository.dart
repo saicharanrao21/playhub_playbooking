@@ -40,6 +40,10 @@ abstract class IPartnerRepository {
   Future<void> completeBooking(String organizationId, String bookingId);
   Future<void> checkInByQr(String organizationId, String qrToken);
 
+  // Finance
+  Future<PartnerFinanceBalance> getBalance(String organizationId);
+  Future<List<FinancialTransaction>> getFinanceTransactions(String organizationId);
+
   // Pricing Rules
   Future<List<PricingRule>> getPricingRules(String organizationId, String facilityId);
   Future<PricingRule?> createPricingRule(
@@ -577,5 +581,30 @@ class PartnerRepositoryImpl implements IPartnerRepository {
       data: {'qrToken': qrToken},
       headers: {'x-organization-id': organizationId},
     );
+  }
+
+  @override
+  Future<PartnerFinanceBalance> getBalance(String organizationId) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      '/organizations/$organizationId/finance/balance',
+      headers: {'x-organization-id': organizationId},
+    );
+    if (response.isSuccess && response.data != null) {
+      return PartnerFinanceBalance.fromJson(response.data!);
+    }
+    return const PartnerFinanceBalance(availableBalance: 0, currency: 'INR');
+  }
+
+  @override
+  Future<List<FinancialTransaction>> getFinanceTransactions(String organizationId) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      '/organizations/$organizationId/finance/transactions',
+      headers: {'x-organization-id': organizationId},
+    );
+    if (response.isSuccess && response.data != null) {
+      final items = response.data!['items'] as List? ?? [];
+      return items.map((i) => FinancialTransaction.fromJson(i as Map<String, dynamic>)).toList();
+    }
+    return [];
   }
 }

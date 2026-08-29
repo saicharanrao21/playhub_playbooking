@@ -221,7 +221,20 @@ async function main() {
     }
   });
 
-  console.log('Seed Phase 56 completed successfully');
+  // 13. Finance Foundation (Phase 57)
+  const existingConfig = await prisma.commissionConfig.findFirst({ where: { organizationId: null } });
+  if (!existingConfig) {
+    await prisma.commissionConfig.create({
+      data: {
+        percentage: 10.0,
+        fixedFee: 0,
+        currency: 'INR',
+        isActive: true,
+      }
+    });
+  }
+
+  console.log('Seed Phase 57 completed successfully');
 }
 
 main()

@@ -534,3 +534,60 @@ class CreatePricingRuleRequest {
         'priority': priority,
       };
 }
+
+@immutable
+class PartnerFinanceBalance {
+  final double availableBalance;
+  final String currency;
+
+  const PartnerFinanceBalance({
+    required this.availableBalance,
+    required this.currency,
+  });
+
+  factory PartnerFinanceBalance.fromJson(Map<String, dynamic> json) {
+    return PartnerFinanceBalance(
+      availableBalance: (json['availableBalance'] as num?)?.toDouble() ?? 0.0,
+      currency: json['currency'] ?? 'INR',
+    );
+  }
+}
+
+@immutable
+class FinancialTransaction {
+  final String id;
+  final String type;
+  final double amount;
+  final String currency;
+  final String status;
+  final String? description;
+  final DateTime createdAt;
+  final String? bookingId;
+  final Map<String, dynamic>? metadata;
+
+  const FinancialTransaction({
+    required this.id,
+    required this.type,
+    required this.amount,
+    required this.currency,
+    required this.status,
+    this.description,
+    required this.createdAt,
+    this.bookingId,
+    this.metadata,
+  });
+
+  factory FinancialTransaction.fromJson(Map<String, dynamic> json) {
+    return FinancialTransaction(
+      id: json['id'] ?? '',
+      type: json['type'] ?? '',
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      currency: json['currency'] ?? 'INR',
+      status: json['status'] ?? 'COMPLETED',
+      description: json['description'],
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
+      bookingId: json['bookingId'],
+      metadata: json['metadata'] is Map ? json['metadata'] : null,
+    );
+  }
+}
