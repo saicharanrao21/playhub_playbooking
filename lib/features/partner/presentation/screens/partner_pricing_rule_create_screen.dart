@@ -131,8 +131,11 @@ class _PartnerPricingRuleCreateScreenState extends ConsumerState<PartnerPricingR
                   selected: isSelected,
                   onSelected: (val) {
                     setState(() {
-                      if (val) _selectedDays.add(day);
-                      else _selectedDays.remove(day);
+                      if (val) {
+                        _selectedDays.add(day);
+                      } else {
+                        _selectedDays.remove(day);
+                      }
                     });
                   },
                 );

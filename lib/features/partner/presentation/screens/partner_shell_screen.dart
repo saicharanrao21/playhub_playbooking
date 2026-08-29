@@ -237,11 +237,7 @@ class _PartnerDashboardTab extends ConsumerWidget {
                     icon: Icons.qr_code_scanner,
                     label: 'Check-in Pass',
                     color: Colors.teal,
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('📷 Fast QR Scanner ready for camera entry.')),
-                      );
-                    },
+                    onTap: () => context.push('/partner/bookings/scanner'),
                   ),
                 ),
               ],
@@ -288,22 +284,26 @@ class _PartnerDashboardTab extends ConsumerWidget {
                   separatorBuilder: (context, index) => const SizedBox(height: 8),
                   itemBuilder: (context, idx) {
                     final b = bookings[idx];
-                    return Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: colorScheme.primaryContainer,
-                          child: Icon(Icons.sports_soccer, color: colorScheme.primary, size: 20),
-                        ),
-                        title: Text('${b.facilityName} (${b.venueName})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        subtitle: Text('${b.customerName} • ${_formatTime(b.startTime)}', style: const TextStyle(fontSize: 11)),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
+                    return InkWell(
+                      onTap: () => context.push('/partner/bookings/${b.id}'),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Card(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: colorScheme.primaryContainer,
+                            child: Icon(Icons.sports_soccer, color: colorScheme.primary, size: 20),
                           ),
-                          child: Text('₹${b.totalPrice.toStringAsFixed(0)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                          title: Text('${b.facilityName} (${b.venueName})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          subtitle: Text('${b.customerName} • ${b.statusLabel}', style: const TextStyle(fontSize: 11)),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text('₹${b.totalPrice.toStringAsFixed(0)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
                         ),
                       ),
                     );
@@ -371,13 +371,6 @@ class _PartnerDashboardTab extends ConsumerWidget {
       ),
     );
   }
-
-  String _formatTime(DateTime dt) {
-    final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
-    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
-    final minute = dt.minute.toString().padLeft(2, '0');
-    return '$hour:$minute $ampm';
-  }
 }
 
 // -------------------------------------------------------------
@@ -423,65 +416,59 @@ class _PartnerBookingsTab extends ConsumerWidget {
             separatorBuilder: (context, index) => const SizedBox(height: 10),
             itemBuilder: (context, idx) {
               final booking = bookings[idx];
-              return Card(
-                elevation: 1,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            booking.facilityName,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
+              return InkWell(
+                onTap: () => context.push('/partner/bookings/${booking.id}'),
+                borderRadius: BorderRadius.circular(14),
+                child: Card(
+                  elevation: 1,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              booking.facilityName,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                             ),
-                            child: Text(
-                              booking.status,
-                              style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 11),
+                            _buildStatusBadge(booking.statusLabel),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(booking.venueName, style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12)),
+                        const Divider(height: 20),
+                        Row(
+                          children: [
+                            const Icon(Icons.person_outline, size: 16, color: Colors.grey),
+                            const SizedBox(width: 6),
+                            Text(booking.customerName, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+                            const Spacer(),
+                            const Icon(Icons.phone_outlined, size: 16, color: Colors.grey),
+                            const SizedBox(width: 6),
+                            Text(booking.customerPhone, style: const TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${_formatDateTime(booking.startTime)} - ${_formatDateTime(booking.endTime)}',
+                              style: const TextStyle(fontSize: 12),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(booking.venueName, style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12)),
-                      const Divider(height: 20),
-                      Row(
-                        children: [
-                          const Icon(Icons.person_outline, size: 16, color: Colors.grey),
-                          const SizedBox(width: 6),
-                          Text(booking.customerName, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
-                          const Spacer(),
-                          const Icon(Icons.phone_outlined, size: 16, color: Colors.grey),
-                          const SizedBox(width: 6),
-                          Text(booking.customerPhone, style: const TextStyle(fontSize: 13)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.access_time, size: 16, color: Colors.grey),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${_formatDateTime(booking.startTime)} - ${_formatDateTime(booking.endTime)}',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          const Spacer(),
-                          Text(
-                            '₹${booking.totalPrice.toStringAsFixed(0)}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green),
-                          ),
-                        ],
-                      ),
-                    ],
+                            const Spacer(),
+                            Text(
+                              '₹${booking.totalPrice.toStringAsFixed(0)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -490,6 +477,36 @@ class _PartnerBookingsTab extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error loading bookings: $err')),
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String label) {
+    Color color;
+    final normalized = label.toUpperCase();
+    if (normalized.contains('PENDING')) {
+      color = Colors.orange;
+    } else if (normalized.contains('CONFIRMED')) {
+      color = Colors.green;
+    } else if (normalized.contains('CHECKED')) {
+      color = Colors.blue;
+    } else if (normalized.contains('COMPLETED')) {
+      color = Colors.teal;
+    } else if (normalized.contains('CANCELLED') || normalized.contains('REJECTED')) {
+      color = Colors.red;
+    } else {
+      color = Colors.grey;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11),
       ),
     );
   }

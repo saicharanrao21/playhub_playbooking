@@ -4,6 +4,7 @@ import { BookingsService } from './bookings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AvailabilityService } from '../availability/availability.service';
 import { PricingService } from '../availability/pricing.service';
+import { QrService } from './qr.service';
 import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { BookingStatus, VenueStatus, FacilityStatus, PaymentStatus } from '@prisma/client';
 import { Events } from '../common/constants/events';
@@ -28,6 +29,11 @@ describe('BookingsService (Concurrency & Logic)', () => {
     calculatePrice: jest.fn().mockResolvedValue({ totalPrice: 100.0, currency: 'INR', breakdown: [] }),
   };
 
+  const mockQrService = {
+    generateBookingToken: jest.fn().mockResolvedValue('mock-token'),
+    verifyBookingToken: jest.fn().mockResolvedValue({ bookingId: 'b1', organizationId: 'org1' }),
+  };
+
   const mockEventEmitter = {
     emit: jest.fn(),
   };
@@ -39,6 +45,7 @@ describe('BookingsService (Concurrency & Logic)', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: AvailabilityService, useValue: mockAvailability },
         { provide: PricingService, useValue: mockPricingService },
+        { provide: QrService, useValue: mockQrService },
         { provide: EventEmitter2, useValue: mockEventEmitter },
       ],
     }).compile();
@@ -79,5 +86,49 @@ describe('BookingsService (Concurrency & Logic)', () => {
 
     await expect(service.create('org1', 'u1', 'f1', dto))
       .rejects.toThrow(BadRequestException);
+  });
+
+  it('should accept a pending booking', async () => {
+    mockPrisma.booking.findFirst.mockResolvedValue({ id: 'b1', status: BookingStatus.PENDING, organizationId: 'org1' });
+    mockPrisma.booking.update.mockResolvedValue({ id: 'b1', status: BookingStatus.CONFIRMED, facility: { name: 'F1' }, organizationId: 'org1' });
+
+    const result = await service.accept('org1', 'b1');
+
+    expect(result.status).toBe(BookingStatus.CONFIRMED);
+    expect(mockEventEmitter.emit).toHaveBeenCalledWith(Events.BOOKING_ACCEPTED, expect.anything());
+  });
+
+  it('should reject a pending booking', async () => {
+    mockPrisma.booking.findFirst.mockResolvedValue({ id: 'b1', status: BookingStatus.PENDING, organizationId: 'org1' });
+    mockPrisma.booking.update.mockResolvedValue({ id: 'b1', status: BookingStatus.REJECTED, facility: { name: 'F1' }, organizationId: 'org1' });
+
+    const result = await service.reject('org1', 'b1', 'Busy day');
+
+    expect(result.status).toBe(BookingStatus.REJECTED);
+    expect(mockEventEmitter.emit).toHaveBeenCalledWith(Events.BOOKING_REJECTED, expect.anything());
+  });
+
+  it('should check in a confirmed booking with valid QR', async () => {
+    mockQrService.verifyBookingToken.mockResolvedValue({ bookingId: 'b1', organizationId: 'org1' });
+    mockPrisma.booking.findFirst.mockResolvedValue({
+      id: 'b1',
+      status: BookingStatus.CONFIRMED,
+      organizationId: 'org1',
+      userId: 'u1',
+      facilityId: 'f1'
+    });
+    mockPrisma.booking.update.mockResolvedValue({
+      id: 'b1',
+      status: BookingStatus.CHECKED_IN,
+      facility: { name: 'F1', venueId: 'v1' },
+      organizationId: 'org1',
+      userId: 'u1'
+    });
+    mockPrisma.checkIn = { create: jest.fn().mockResolvedValue({}) };
+
+    const result = await service.checkIn('org1', 'staff1', 'valid-token');
+
+    expect((result as any).status).toBe(BookingStatus.CHECKED_IN);
+    expect(mockPrisma.checkIn.create).toHaveBeenCalled();
   });
 });

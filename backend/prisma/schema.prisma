@@ -60,6 +60,9 @@ enum BookingStatus {
   PENDING
   CONFIRMED
   CANCELLED
+  REJECTED
+  CHECKED_IN
+  NO_SHOW
   COMPLETED
 }
 
@@ -154,6 +157,8 @@ model User {
   devices                  Device[]
   communicationPreferences CommunicationPreference[]
   communicationLogs        CommunicationLog[]
+  staffCheckIns            CheckIn[]               @relation("StaffCheckIns")
+  userCheckIns             CheckIn[]
 
   @@map("users")
 }
@@ -180,6 +185,7 @@ model Organization {
   payments      Payment[]
   notifications Notification[]
   media         Media[]
+  checkIns      CheckIn[]
 
   @@map("organizations")
 }
@@ -281,6 +287,7 @@ model Venue {
   facilities     Facility[]
   operatingHours OperatingHours[]
   media          Media[]
+  checkIns       CheckIn[]
 
   @@unique([businessId, slug])
   @@index([businessId])
@@ -346,6 +353,7 @@ model Facility {
   pricingRules      PricingRule[]
   bookings          Booking[]
   media             Media[]
+  checkIns          CheckIn[]
 
   @@index([venueId])
   @@index([categoryId])
@@ -377,6 +385,7 @@ model Booking {
   user         User         @relation(fields: [userId], references: [id])
   payments     Payment[]
   notifications Notification[]
+  checkIn       CheckIn?
 
   @@index([organizationId])
   @@index([facilityId])
@@ -638,4 +647,29 @@ model CommunicationLog {
   @@index([status])
   @@index([idempotencyKey])
   @@map("communication_logs")
+}
+
+model CheckIn {
+  id             String   @id @default(uuid())
+  bookingId      String   @unique
+  organizationId String
+  venueId        String
+  facilityId     String
+  userId         String
+  checkedInById  String
+  timestamp      DateTime @default(now())
+  method         String   @default("QR_SCAN")
+  status         String   @default("SUCCESS")
+
+  booking      Booking      @relation(fields: [bookingId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  venue        Venue        @relation(fields: [venueId], references: [id])
+  facility     Facility     @relation(fields: [facilityId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+  checkedInBy  User         @relation("StaffCheckIns", fields: [checkedInById], references: [id])
+
+  @@index([organizationId])
+  @@index([venueId])
+  @@index([bookingId])
+  @@map("check_ins")
 }

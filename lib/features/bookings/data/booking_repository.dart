@@ -70,4 +70,12 @@ class BookingRepository {
     }
     return null;
   }
+
+  Future<String?> getQrPass(String bookingId) async {
+    final response = await _apiClient.get<Map<String, dynamic>>('$_baseUrl/$bookingId/qr-pass');
+    if (response.isSuccess && response.data != null) {
+      return response.data!['qrToken']?.toString();
+    }
+    return null;
+  }
 }

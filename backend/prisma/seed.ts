@@ -1,4 +1,4 @@
-import { PrismaClient, AccountStatus, BusinessStatus, VenueStatus, FacilityStatus, OrganizationStatus, KYCStatus, DayOfWeek } from '@prisma/client';
+import { PrismaClient, AccountStatus, BusinessStatus, VenueStatus, FacilityStatus, OrganizationStatus, KYCStatus, DayOfWeek, BookingStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -166,7 +166,7 @@ async function main() {
     ]
   });
 
-  // 11. Availability Block (Phase 55 focus)
+  // 11. Availability Block
   await prisma.availabilityBlock.deleteMany({ where: { facilityId: facility.id } });
   await prisma.availabilityBlock.create({
     data: {
@@ -178,7 +178,50 @@ async function main() {
     }
   });
 
-  console.log('Seed Phase 55 completed successfully');
+  // 12. Test Bookings for Phase 56
+  const customerUser = await prisma.user.upsert({
+    where: { email: 'customer@playhub.com' },
+    update: {},
+    create: {
+      email: 'customer@playhub.com',
+      fullName: 'Rahul Customer',
+      passwordHash: passwordHash,
+      status: AccountStatus.ACTIVE,
+      isEmailVerified: true,
+    },
+  });
+
+  await prisma.booking.deleteMany({ where: { organizationId: partnerOrg.id } });
+
+  // 12a. Pending Booking
+  await prisma.booking.create({
+    data: {
+      organizationId: partnerOrg.id,
+      userId: customerUser.id,
+      facilityId: facility.id,
+      startTime: new Date('2026-08-31T17:00:00Z'),
+      endTime: new Date('2026-08-31T18:00:00Z'),
+      status: BookingStatus.PENDING,
+      totalPrice: 500,
+      currency: 'INR',
+    }
+  });
+
+  // 12b. Confirmed Booking
+  await prisma.booking.create({
+    data: {
+      organizationId: partnerOrg.id,
+      userId: customerUser.id,
+      facilityId: facility.id,
+      startTime: new Date('2026-08-31T19:00:00Z'),
+      endTime: new Date('2026-08-31T20:00:00Z'),
+      status: BookingStatus.CONFIRMED,
+      totalPrice: 800,
+      currency: 'INR',
+    }
+  });
+
+  console.log('Seed Phase 56 completed successfully');
 }
 
 main()

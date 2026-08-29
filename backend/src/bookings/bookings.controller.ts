@@ -4,6 +4,7 @@ import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { RescheduleBookingDto } from './dto/reschedule-booking.dto';
 import { CancelBookingDto } from './dto/cancel-booking.dto';
+import { CheckInDto } from './dto/check-in.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
@@ -112,5 +113,67 @@ export class BookingsController {
     const userId = isPrivileged ? undefined : user.userId;
 
     return this.bookingsService.reschedule(organizationId, id, dto, userId);
+  }
+
+  @Post(':id/accept')
+  @RequirePermission(Permissions.BOOKING_ACCEPT)
+  @ApiOperation({ summary: 'Accept/Approve a pending booking (Partner only)' })
+  async accept(
+    @OrganizationContext() organizationId: string,
+    @Param('id') id: string,
+  ) {
+    return this.bookingsService.accept(organizationId, id);
+  }
+
+  @Post(':id/reject')
+  @RequirePermission(Permissions.BOOKING_REJECT)
+  @ApiOperation({ summary: 'Reject a pending booking (Partner only)' })
+  async reject(
+    @OrganizationContext() organizationId: string,
+    @Param('id') id: string,
+    @Body() dto: CancelBookingDto,
+  ) {
+    return this.bookingsService.reject(organizationId, id, dto.reason);
+  }
+
+  @Post('check-in')
+  @RequirePermission(Permissions.BOOKING_CHECKIN)
+  @ApiOperation({ summary: 'Check in a user via QR pass (Partner/Staff only)' })
+  async checkIn(
+    @OrganizationContext() organizationId: string,
+    @CurrentUser() staff: UserIdentity,
+    @Body() dto: CheckInDto,
+  ) {
+    return this.bookingsService.checkIn(organizationId, staff.userId, dto.qrToken);
+  }
+
+  @Post(':id/no-show')
+  @RequirePermission(Permissions.BOOKING_NOSHOW)
+  @ApiOperation({ summary: 'Mark a booking as no-show (Partner only)' })
+  async noShow(
+    @OrganizationContext() organizationId: string,
+    @Param('id') id: string,
+  ) {
+    return this.bookingsService.noShow(organizationId, id);
+  }
+
+  @Post(':id/complete')
+  @RequirePermission(Permissions.BOOKING_COMPLETE)
+  @ApiOperation({ summary: 'Mark a booking as completed (Partner only)' })
+  async complete(
+    @OrganizationContext() organizationId: string,
+    @Param('id') id: string,
+  ) {
+    return this.bookingsService.complete(organizationId, id);
+  }
+
+  @Get(':id/qr-pass')
+  @ApiOperation({ summary: 'Get a temporary QR token for check-in' })
+  async getQrPass(
+    @OrganizationContext() organizationId: string,
+    @Param('id') id: string,
+    @CurrentUser() user: UserIdentity,
+  ) {
+    return this.bookingsService.getQrPass(organizationId, id, user.userId);
   }
 }

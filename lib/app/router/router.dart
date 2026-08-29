@@ -51,6 +51,8 @@ import '../../features/partner/presentation/screens/partner_facility_create_scre
 import '../../features/partner/presentation/screens/partner_kyc_status_screen.dart';
 import '../../features/partner/presentation/screens/partner_pricing_rules_screen.dart';
 import '../../features/partner/presentation/screens/partner_pricing_rule_create_screen.dart';
+import '../../features/partner/presentation/screens/partner_booking_details_screen.dart';
+import '../../features/partner/presentation/screens/partner_qr_scanner_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -387,6 +389,18 @@ final routerProvider = Provider<GoRouter>((ref) {
                 name: 'partner_facility_create',
                 builder: (context, state) => PartnerFacilityCreateScreen(
                   venueId: state.pathParameters['venueId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'bookings/scanner',
+                name: 'partner_booking_scanner',
+                builder: (context, state) => const PartnerQrScannerScreen(),
+              ),
+              GoRoute(
+                path: 'bookings/:bookingId',
+                name: 'partner_booking_details',
+                builder: (context, state) => PartnerBookingDetailsScreen(
+                  bookingId: state.pathParameters['bookingId']!,
                 ),
               ),
               GoRoute(

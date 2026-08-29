@@ -34,6 +34,11 @@ abstract class IPartnerRepository {
     Map<String, dynamic> data,
   );
   Future<List<PartnerBookingItem>> getBookings(String organizationId);
+  Future<void> acceptBooking(String organizationId, String bookingId);
+  Future<void> rejectBooking(String organizationId, String bookingId, String? reason);
+  Future<void> markNoShow(String organizationId, String bookingId);
+  Future<void> completeBooking(String organizationId, String bookingId);
+  Future<void> checkInByQr(String organizationId, String qrToken);
 
   // Pricing Rules
   Future<List<PricingRule>> getPricingRules(String organizationId, String facilityId);
@@ -530,5 +535,47 @@ class PartnerRepositoryImpl implements IPartnerRepository {
     } catch (e) {
       AppLogger.warning('Backend deleteAvailabilityBlock failed: $e');
     }
+  }
+
+  @override
+  Future<void> acceptBooking(String organizationId, String bookingId) async {
+    await _apiClient.post(
+      '/organizations/$organizationId/bookings/$bookingId/accept',
+      headers: {'x-organization-id': organizationId},
+    );
+  }
+
+  @override
+  Future<void> rejectBooking(String organizationId, String bookingId, String? reason) async {
+    await _apiClient.post(
+      '/organizations/$organizationId/bookings/$bookingId/reject',
+      data: {'reason': reason},
+      headers: {'x-organization-id': organizationId},
+    );
+  }
+
+  @override
+  Future<void> markNoShow(String organizationId, String bookingId) async {
+    await _apiClient.post(
+      '/organizations/$organizationId/bookings/$bookingId/no-show',
+      headers: {'x-organization-id': organizationId},
+    );
+  }
+
+  @override
+  Future<void> completeBooking(String organizationId, String bookingId) async {
+    await _apiClient.post(
+      '/organizations/$organizationId/bookings/$bookingId/complete',
+      headers: {'x-organization-id': organizationId},
+    );
+  }
+
+  @override
+  Future<void> checkInByQr(String organizationId, String qrToken) async {
+    await _apiClient.post(
+      '/organizations/$organizationId/bookings/check-in',
+      data: {'qrToken': qrToken},
+      headers: {'x-organization-id': organizationId},
+    );
   }
 }

@@ -23,6 +23,7 @@ class StatusBadge extends StatelessWidget {
       case 'PAID':
       case 'COMPLETED':
       case 'APPROVED':
+      case 'CHECKED_IN':
         bgColor = Colors.green.withValues(alpha: 0.15);
         fgColor = Colors.green.shade800;
         icon = Icons.check_circle_outline;
@@ -30,6 +31,7 @@ class StatusBadge extends StatelessWidget {
       case 'PENDING':
       case 'UPCOMING':
       case 'IN_PROGRESS':
+      case 'PENDING_APPROVAL':
         bgColor = Colors.orange.withValues(alpha: 0.15);
         fgColor = Colors.orange.shade900;
         icon = Icons.schedule;
@@ -38,6 +40,7 @@ class StatusBadge extends StatelessWidget {
       case 'FAILED':
       case 'REJECTED':
       case 'INACTIVE':
+      case 'NO_SHOW':
         bgColor = Colors.red.withValues(alpha: 0.15);
         fgColor = Colors.red.shade800;
         icon = Icons.cancel_outlined;

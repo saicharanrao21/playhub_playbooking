@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../providers/booking_provider.dart';
 import '../../domain/models/booking_models.dart';
 import '../../../../core/models/app_models.dart' hide Booking, BookingStatus;
@@ -184,23 +185,35 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
                     ),
                   ),
 
-                  // Middle QR Simulated Code
+                  // Middle QR Code
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
                     child: Column(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: Icon(
-                            Icons.qr_code_2,
-                            size: 140,
-                            color: Colors.grey.shade900,
-                          ),
+                        Consumer(
+                          builder: (context, ref, child) {
+                            final qrAsync = ref.watch(qrPassProvider(booking.id));
+                            return qrAsync.when(
+                              data: (token) {
+                                if (token == null) return const Text('QR not available');
+                                return Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.grey.shade300),
+                                  ),
+                                  child: QrImageView(
+                                    data: token,
+                                    version: QrVersions.auto,
+                                    size: 160.0,
+                                  ),
+                                );
+                              },
+                              loading: () => const SizedBox(height: 160, child: Center(child: CircularProgressIndicator())),
+                              error: (e, _) => Text('Error loading QR: $e'),
+                            );
+                          },
                         ),
                         const SizedBox(height: 12),
                         Text(

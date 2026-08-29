@@ -337,6 +337,19 @@ class PartnerBookingItem {
       paymentStatus: latestPayment?['status']?.toString() ?? 'CAPTURED',
     );
   }
+
+  String get statusLabel {
+    switch (status.toUpperCase()) {
+      case 'PENDING': return 'Pending Approval';
+      case 'CONFIRMED': return 'Confirmed';
+      case 'CHECKED_IN': return 'Checked In';
+      case 'COMPLETED': return 'Completed';
+      case 'CANCELLED': return 'Cancelled';
+      case 'REJECTED': return 'Rejected';
+      case 'NO_SHOW': return 'No Show';
+      default: return status;
+    }
+  }
 }
 
 class OnboardPartnerRequest {

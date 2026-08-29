@@ -75,6 +75,11 @@ final partnerBookingsProvider = FutureProvider.autoDispose<List<PartnerBookingIt
   return repo.getBookings(orgId);
 });
 
+final partnerBookingDetailsProvider = FutureProvider.autoDispose.family<PartnerBookingItem?, String>((ref, bookingId) async {
+  final bookingsAsync = await ref.watch(partnerBookingsProvider.future);
+  return bookingsAsync.firstWhere((b) => b.id == bookingId);
+});
+
 final partnerPricingRulesProvider = FutureProvider.autoDispose.family<List<PricingRule>, String>((ref, facilityId) async {
   final repo = ref.watch(partnerRepositoryProvider);
   final currentOrg = ref.watch(currentPartnerOrgProvider);

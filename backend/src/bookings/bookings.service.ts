@@ -5,6 +5,7 @@ import { CreateBookingDto } from './dto/create-booking.dto';
 import { RescheduleBookingDto } from './dto/reschedule-booking.dto';
 import { AvailabilityService } from '../availability/availability.service';
 import { PricingService } from '../availability/pricing.service';
+import { QrService } from './qr.service';
 import { BookingStatus, VenueStatus, FacilityStatus, PaymentStatus } from '@prisma/client';
 import { DateTime } from 'luxon';
 import { TimeInterval } from '../common/utils/time-interval.util';
@@ -16,6 +17,7 @@ export class BookingsService {
     private prisma: PrismaService,
     private availabilityService: AvailabilityService,
     private pricingService: PricingService,
+    private qrService: QrService,
     private eventEmitter: EventEmitter2,
   ) {}
 
@@ -26,10 +28,13 @@ export class BookingsService {
     if (current === next) return;
 
     const allowedTransitions: Record<BookingStatus, BookingStatus[]> = {
-      [BookingStatus.PENDING]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
-      [BookingStatus.CONFIRMED]: [BookingStatus.COMPLETED, BookingStatus.CANCELLED],
-      [BookingStatus.CANCELLED]: [], // Terminal state
-      [BookingStatus.COMPLETED]: [], // Terminal state
+      [BookingStatus.PENDING]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED, BookingStatus.REJECTED],
+      [BookingStatus.CONFIRMED]: [BookingStatus.CHECKED_IN, BookingStatus.CANCELLED, BookingStatus.NO_SHOW],
+      [BookingStatus.CHECKED_IN]: [BookingStatus.COMPLETED],
+      [BookingStatus.REJECTED]: [],
+      [BookingStatus.CANCELLED]: [],
+      [BookingStatus.NO_SHOW]: [],
+      [BookingStatus.COMPLETED]: [],
     };
 
     if (!allowedTransitions[current].includes(next)) {
@@ -227,7 +232,19 @@ export class BookingsService {
         },
         orderBy: { startTime: 'desc' },
         include: {
-          facility: true,
+          facility: { include: { venue: true } },
+          user: {
+            select: {
+              id: true,
+              email: true,
+              fullName: true,
+              phoneNumber: true,
+            }
+          },
+          payments: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          }
         },
         skip: filters.skip,
         take: filters.take,
@@ -409,5 +426,148 @@ export class BookingsService {
     });
 
     return updatedBooking;
+  }
+
+  async accept(organizationId: string, id: string) {
+    const booking = await this.findOne(organizationId, id);
+    this.validateStatusTransition(booking.status, BookingStatus.CONFIRMED);
+
+    const updated = await this.prisma.booking.update({
+      where: { id, organizationId },
+      data: { status: BookingStatus.CONFIRMED },
+      include: { facility: true },
+    });
+
+    this.eventEmitter.emit(Events.BOOKING_ACCEPTED, {
+      bookingId: updated.id,
+      organizationId: updated.organizationId,
+      userId: updated.userId,
+      facilityName: updated.facility.name,
+    });
+
+    return updated;
+  }
+
+  async reject(organizationId: string, id: string, reason?: string) {
+    const booking = await this.findOne(organizationId, id);
+    this.validateStatusTransition(booking.status, BookingStatus.REJECTED);
+
+    const updated = await this.prisma.booking.update({
+      where: { id, organizationId },
+      data: {
+        status: BookingStatus.REJECTED,
+        cancelReason: reason,
+      },
+      include: { facility: true },
+    });
+
+    this.eventEmitter.emit(Events.BOOKING_REJECTED, {
+      bookingId: updated.id,
+      organizationId: updated.organizationId,
+      userId: updated.userId,
+      facilityName: updated.facility.name,
+      reason,
+    });
+
+    return updated;
+  }
+
+  async checkIn(organizationId: string, staffId: string, qrToken: string) {
+    const payload = await this.qrService.verifyBookingToken(qrToken);
+    if (!payload) {
+      throw new BadRequestException('Invalid or expired QR pass');
+    }
+
+    if (payload.organizationId !== organizationId) {
+      throw new ForbiddenException('This booking belongs to another organization');
+    }
+
+    const booking = await this.findOne(organizationId, payload.bookingId);
+
+    // Idempotency: If already checked in, return the existing record or a specific response
+    if (booking.status === BookingStatus.CHECKED_IN) {
+       return { success: true, message: 'Already checked in', booking };
+    }
+
+    this.validateStatusTransition(booking.status, BookingStatus.CHECKED_IN);
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updatedBooking = await tx.booking.update({
+        where: { id: booking.id, organizationId },
+        data: { status: BookingStatus.CHECKED_IN },
+        include: { facility: { include: { venue: true } } },
+      });
+
+      await tx.checkIn.create({
+        data: {
+          bookingId: booking.id,
+          organizationId,
+          venueId: updatedBooking.facility.venueId,
+          facilityId: updatedBooking.facilityId,
+          userId: updatedBooking.userId,
+          checkedInById: staffId,
+          method: 'QR_SCAN',
+          status: 'SUCCESS',
+        },
+      });
+
+      return updatedBooking;
+    });
+
+    this.eventEmitter.emit(Events.BOOKING_ARRIVED, {
+      bookingId: result.id,
+      organizationId: result.organizationId,
+      userId: result.userId,
+      facilityName: result.facility.name,
+    });
+
+    return result;
+  }
+
+  async noShow(organizationId: string, id: string) {
+    const booking = await this.findOne(organizationId, id);
+    this.validateStatusTransition(booking.status, BookingStatus.NO_SHOW);
+
+    const updated = await this.prisma.booking.update({
+      where: { id, organizationId },
+      data: { status: BookingStatus.NO_SHOW },
+    });
+
+    this.eventEmitter.emit(Events.BOOKING_NOSHOW, {
+      bookingId: updated.id,
+      organizationId: updated.organizationId,
+      userId: updated.userId,
+    });
+
+    return updated;
+  }
+
+  async complete(organizationId: string, id: string) {
+    const booking = await this.findOne(organizationId, id);
+    this.validateStatusTransition(booking.status, BookingStatus.COMPLETED);
+
+    const updated = await this.prisma.booking.update({
+      where: { id, organizationId },
+      data: { status: BookingStatus.COMPLETED },
+    });
+
+    this.eventEmitter.emit(Events.BOOKING_COMPLETED, {
+      bookingId: updated.id,
+      organizationId: updated.organizationId,
+      userId: updated.userId,
+    });
+
+    return updated;
+  }
+
+  async getQrPass(organizationId: string, id: string, userId: string) {
+    const booking = await this.findOne(organizationId, id, userId);
+
+    if (booking.status !== BookingStatus.CONFIRMED && booking.status !== BookingStatus.PENDING) {
+      throw new BadRequestException('QR pass only available for pending or confirmed bookings');
+    }
+
+    const token = await this.qrService.generateBookingToken(booking.id, organizationId);
+    return { qrToken: token };
   }
 }

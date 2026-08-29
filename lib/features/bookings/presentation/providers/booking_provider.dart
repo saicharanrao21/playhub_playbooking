@@ -10,6 +10,11 @@ final bookingRepositoryProvider = Provider<BookingRepository>((ref) {
   return BookingRepository(apiClient, orgId);
 });
 
+final qrPassProvider = FutureProvider.family<String?, String>((ref, bookingId) async {
+  final repository = ref.watch(bookingRepositoryProvider);
+  return repository.getQrPass(bookingId);
+});
+
 final myBookingsProvider = StateNotifierProvider<MyBookingsNotifier, AsyncValue<List<Booking>>>((ref) {
   final repository = ref.watch(bookingRepositoryProvider);
   return MyBookingsNotifier(repository);
