@@ -49,6 +49,8 @@ import '../../features/partner/presentation/screens/partner_venue_create_screen.
 import '../../features/partner/presentation/screens/partner_venue_details_screen.dart';
 import '../../features/partner/presentation/screens/partner_facility_create_screen.dart';
 import '../../features/partner/presentation/screens/partner_kyc_status_screen.dart';
+import '../../features/partner/presentation/screens/partner_pricing_rules_screen.dart';
+import '../../features/partner/presentation/screens/partner_pricing_rule_create_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -386,6 +388,31 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => PartnerFacilityCreateScreen(
                   venueId: state.pathParameters['venueId']!,
                 ),
+              ),
+              GoRoute(
+                path: 'facilities/:facilityId/pricing',
+                name: 'partner_pricing_rules',
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>;
+                  return PartnerPricingRulesScreen(
+                    venueId: state.pathParameters['venueId']!,
+                    facilityId: state.pathParameters['facilityId']!,
+                    facilityName: extra['facilityName'] ?? 'Facility',
+                  );
+                },
+                routes: [
+                  GoRoute(
+                    path: 'create',
+                    name: 'partner_pricing_rule_create',
+                    builder: (context, state) {
+                      final extra = state.extra as Map<String, dynamic>;
+                      return PartnerPricingRuleCreateScreen(
+                        facilityId: state.pathParameters['facilityId']!,
+                        facilityName: extra['facilityName'] ?? 'Facility',
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),

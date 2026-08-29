@@ -19,7 +19,7 @@ class AvailabilityScreen extends ConsumerStatefulWidget {
 
 class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
   DateTime _selectedDate = DateTime.now();
-  TimeInterval? _selectedSlot;
+  AvailableSlot? _selectedSlot;
 
   @override
   Widget build(BuildContext context) {
@@ -159,11 +159,11 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Available 1-Hour Slots (${slots.length})',
+                          'Available Slots (${slots.length})',
                           style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         Text(
-                          '₹500 - ₹1000 / hr',
+                          'Duration: ${availability.durationMinutes} min',
                           style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.w600, fontSize: 13),
                         ),
                       ],
@@ -175,15 +175,15 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
                       physics: const NeverScrollableScrollPhysics(),
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3,
-                        childAspectRatio: 2.1,
+                        childAspectRatio: 1.8,
                         crossAxisSpacing: 10,
                         mainAxisSpacing: 10,
                       ),
                       itemCount: slots.length,
                       itemBuilder: (context, index) {
                         final slot = slots[index];
-                        final isSelected = _selectedSlot?.start == slot.start;
-                        final startStr = DateFormat('h:mm a').format(slot.start);
+                        final isSelected = _selectedSlot?.startTime == slot.startTime;
+                        final startStr = DateFormat('h:mm a').format(slot.startTime);
 
                         return InkWell(
                           onTap: () {
@@ -218,13 +218,13 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    'Available',
+                                    '₹${slot.price.toStringAsFixed(0)}',
                                     style: TextStyle(
                                       fontSize: 10,
                                       color: isSelected
                                           ? colorScheme.onPrimary.withValues(alpha: 0.8)
                                           : Colors.green.shade700,
-                                      fontWeight: FontWeight.w600,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ],
@@ -242,7 +242,7 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
                 padding: const EdgeInsets.all(16),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
-                  childAspectRatio: 2.1,
+                  childAspectRatio: 1.8,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
                 ),
@@ -279,14 +279,20 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
                 children: [
                   Text(
                     _selectedSlot != null
-                        ? '${DateFormat('h:mm a').format(_selectedSlot!.start)} - ${DateFormat('h:mm a').format(_selectedSlot!.end)}'
+                        ? '${DateFormat('h:mm a').format(_selectedSlot!.startTime)} - ${DateFormat('h:mm a').format(_selectedSlot!.endTime)}'
                         : 'Select a time slot',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
-                  Text(
-                    DateFormat('EEE, MMM d').format(_selectedDate),
-                    style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
-                  ),
+                  if (_selectedSlot != null)
+                    Text(
+                      'Total: ₹${_selectedSlot!.price.toStringAsFixed(0)}',
+                      style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 14),
+                    )
+                  else
+                    Text(
+                      DateFormat('EEE, MMM d').format(_selectedDate),
+                      style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
+                    ),
                 ],
               ),
               ElevatedButton(
@@ -296,8 +302,8 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
                         context.push('/booking/review', extra: {
                           'facilityId': widget.facilityId,
                           'facilityName': widget.facilityName,
-                          'startTime': _selectedSlot!.start.toIso8601String(),
-                          'endTime': _selectedSlot!.end.toIso8601String(),
+                          'startTime': _selectedSlot!.startTime.toIso8601String(),
+                          'endTime': _selectedSlot!.endTime.toIso8601String(),
                         });
                       },
                 style: ElevatedButton.styleFrom(

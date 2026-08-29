@@ -4,6 +4,7 @@ import { FacilitiesService } from './facilities.service';
 import { CreateFacilityDto } from './dto/create-facility.dto';
 import { UpdateFacilityDto } from './dto/update-facility.dto';
 import { CreateBlockDto } from './dto/create-block.dto';
+import { CreatePricingRuleDto } from './dto/create-pricing-rule.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../common/guards/organization.guard';
@@ -55,6 +56,16 @@ export class FacilitiesController {
     return this.facilitiesService.findOne(organizationId, id);
   }
 
+  @Get(':id/pricing-rules')
+  @RequirePermission(Permissions.PRICING_READ)
+  @ApiOperation({ summary: 'Get all pricing rules for a facility' })
+  async getPricingRules(
+    @OrganizationContext() organizationId: string,
+    @Param('id') id: string,
+  ) {
+    return this.facilitiesService.getPricingRules(organizationId, id);
+  }
+
   @Patch(':id')
   @RequirePermission(Permissions.FACILITY_UPDATE)
   @ApiOperation({ summary: 'Update a facility' })
@@ -86,5 +97,27 @@ export class FacilitiesController {
     @Param('blockId') blockId: string,
   ) {
     return this.facilitiesService.deleteBlock(organizationId, id, blockId);
+  }
+
+  @Post(':id/pricing-rules')
+  @RequirePermission(Permissions.PRICING_CREATE)
+  @ApiOperation({ summary: 'Create a pricing rule for a facility' })
+  async createPricingRule(
+    @OrganizationContext() organizationId: string,
+    @Param('id') id: string,
+    @Body() dto: CreatePricingRuleDto,
+  ) {
+    return this.facilitiesService.createPricingRule(organizationId, id, dto);
+  }
+
+  @Delete(':id/pricing-rules/:ruleId')
+  @RequirePermission(Permissions.PRICING_DELETE)
+  @ApiOperation({ summary: 'Remove a pricing rule' })
+  async deletePricingRule(
+    @OrganizationContext() organizationId: string,
+    @Param('id') id: string,
+    @Param('ruleId') ruleId: string,
+  ) {
+    return this.facilitiesService.deletePricingRule(organizationId, id, ruleId);
   }
 }

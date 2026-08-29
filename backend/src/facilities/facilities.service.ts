@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateFacilityDto } from './dto/create-facility.dto';
 import { UpdateFacilityDto } from './dto/update-facility.dto';
 import { CreateBlockDto } from './dto/create-block.dto';
+import { CreatePricingRuleDto } from './dto/create-pricing-rule.dto';
 
 @Injectable()
 export class FacilitiesService {
@@ -91,6 +92,14 @@ export class FacilitiesService {
     return facility;
   }
 
+  async getPricingRules(organizationId: string, facilityId: string) {
+    await this.findOne(organizationId, facilityId);
+    return this.prisma.pricingRule.findMany({
+      where: { facilityId },
+      orderBy: { priority: 'desc' },
+    });
+  }
+
   async update(organizationId: string, id: string, dto: UpdateFacilityDto) {
     await this.findOne(organizationId, id);
 
@@ -125,6 +134,27 @@ export class FacilitiesService {
 
     return this.prisma.availabilityBlock.delete({
       where: { id: blockId, facilityId },
+    });
+  }
+
+  async createPricingRule(organizationId: string, facilityId: string, dto: CreatePricingRuleDto) {
+    await this.findOne(organizationId, facilityId);
+
+    return this.prisma.pricingRule.create({
+      data: {
+        ...dto,
+        facilityId,
+        effectiveFrom: dto.effectiveFrom ? new Date(dto.effectiveFrom) : null,
+        effectiveTo: dto.effectiveTo ? new Date(dto.effectiveTo) : null,
+      },
+    });
+  }
+
+  async deletePricingRule(organizationId: string, facilityId: string, ruleId: string) {
+    await this.findOne(organizationId, facilityId);
+
+    return this.prisma.pricingRule.delete({
+      where: { id: ruleId, facilityId },
     });
   }
 }

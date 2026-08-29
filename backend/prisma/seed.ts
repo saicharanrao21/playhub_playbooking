@@ -1,4 +1,4 @@
-import { PrismaClient, AccountStatus, BusinessStatus, VenueStatus, FacilityStatus, OrganizationStatus, KYCStatus } from '@prisma/client';
+import { PrismaClient, AccountStatus, BusinessStatus, VenueStatus, FacilityStatus, OrganizationStatus, KYCStatus, DayOfWeek } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -33,12 +33,6 @@ async function main() {
     create: { name: 'Football', slug: 'football', categoryId: sports.id },
   });
 
-  await prisma.activity.upsert({
-    where: { categoryId_slug: { categoryId: sports.id, slug: 'cricket' } },
-    update: {},
-    create: { name: 'Cricket', slug: 'cricket', categoryId: sports.id },
-  });
-
   // 4. Partner User
   const partnerUser = await prisma.user.upsert({
     where: { email: 'partner@playhub.com' },
@@ -61,20 +55,14 @@ async function main() {
       name: 'Skyline Sports Hub',
       slug: 'skyline-sports',
       kycStatus: KYCStatus.APPROVED,
-      panNumber: 'ABCDE1234F',
-      gstNumber: '36ABCDE1234F1Z5',
-      accountHolderName: 'Skyline Sports Ventures',
-      accountNumber: '98765432101234',
-      ifscCode: 'HDFC0001234',
-      bankName: 'HDFC Bank',
     },
   });
 
-  // 6. Partner Membership (Role: BUSINESS_OWNER)
+  // 6. Partner Membership
   let partnerRole = await prisma.role.findUnique({ where: { name: 'BUSINESS_OWNER' } });
   if (!partnerRole) {
     partnerRole = await prisma.role.create({
-      data: { name: 'BUSINESS_OWNER', description: 'Business Owner & Partner Administrator' },
+      data: { name: 'BUSINESS_OWNER', description: 'Business Owner' },
     });
   }
 
@@ -89,8 +77,11 @@ async function main() {
   });
 
   // 7. Partner Business
-  const partnerBusiness = await prisma.business.create({
-    data: {
+  const partnerBusiness = await prisma.business.upsert({
+    where: { id: 'biz_skyline_001' },
+    update: {},
+    create: {
+      id: 'biz_skyline_001',
       organizationId: partnerOrg.id,
       legalName: 'Skyline Sports Ventures Pvt Ltd',
       displayName: 'Skyline Arena',
@@ -98,9 +89,11 @@ async function main() {
     },
   });
 
-  // 8. Partner Venues (Multi-Venue)
-  const venue1 = await prisma.venue.create({
-    data: {
+  // 8. Partner Venue
+  const venue = await prisma.venue.upsert({
+    where: { businessId_slug: { businessId: partnerBusiness.id, slug: 'skyline-gachibowli' } },
+    update: { timezone: 'Asia/Kolkata' },
+    create: {
       businessId: partnerBusiness.id,
       cityId: hyd.id,
       name: 'Skyline Gachibowli',
@@ -110,58 +103,82 @@ async function main() {
       state: 'Telangana',
       country: 'India',
       postalCode: '500081',
+      timezone: 'Asia/Kolkata',
       status: VenueStatus.ACTIVE,
       operatingHours: {
         create: [
-          { dayOfWeek: 'MONDAY', openingTime: '00:00', closingTime: '23:59' },
-          { dayOfWeek: 'TUESDAY', openingTime: '00:00', closingTime: '23:59' },
-          { dayOfWeek: 'WEDNESDAY', openingTime: '00:00', closingTime: '23:59' },
-          { dayOfWeek: 'THURSDAY', openingTime: '00:00', closingTime: '23:59' },
-          { dayOfWeek: 'FRIDAY', openingTime: '00:00', closingTime: '23:59' },
-          { dayOfWeek: 'SATURDAY', openingTime: '00:00', closingTime: '23:59' },
-          { dayOfWeek: 'SUNDAY', openingTime: '00:00', closingTime: '23:59' },
+          { dayOfWeek: 'MONDAY', openingTime: '06:00', closingTime: '23:00' },
+          { dayOfWeek: 'TUESDAY', openingTime: '06:00', closingTime: '23:00' },
+          { dayOfWeek: 'WEDNESDAY', openingTime: '06:00', closingTime: '23:00' },
+          { dayOfWeek: 'THURSDAY', openingTime: '06:00', closingTime: '23:00' },
+          { dayOfWeek: 'FRIDAY', openingTime: '06:00', closingTime: '23:00' },
+          { dayOfWeek: 'SATURDAY', openingTime: '06:00', closingTime: '23:59' },
+          { dayOfWeek: 'SUNDAY', openingTime: '06:00', closingTime: '23:59' },
         ]
       }
     },
   });
 
-  await prisma.venue.create({
-    data: {
-      businessId: partnerBusiness.id,
-      cityId: blr.id,
-      name: 'Skyline Whitefield',
-      slug: 'skyline-whitefield',
-      address: 'ITPL Main Road',
-      city: 'Bangalore',
-      state: 'Karnataka',
-      country: 'India',
-      postalCode: '560066',
-      status: VenueStatus.ACTIVE,
-    },
-  });
-
-  // 9. Facilities for Venue 1
-  const fac1 = await prisma.facility.create({
-    data: {
-      venueId: venue1.id,
+  // 9. Facility
+  const facility = await prisma.facility.upsert({
+    where: { id: 'fac_football_001' },
+    update: { defaultSlotDuration: 60 },
+    create: {
+      id: 'fac_football_001',
+      venueId: venue.id,
       categoryId: sports.id,
       activityId: football.id,
       name: 'Main Football Turf',
       capacity: 10,
       status: FacilityStatus.ACTIVE,
+      defaultSlotDuration: 60,
     },
   });
 
-  await prisma.pricingRule.create({
+  // 10. Pricing Rules (Phase 55 focus)
+  await prisma.pricingRule.deleteMany({ where: { facilityId: facility.id } });
+
+  await prisma.pricingRule.createMany({
+    data: [
+      {
+        facilityId: facility.id,
+        name: 'Base Weekday Rate',
+        basePrice: 500,
+        daysOfWeek: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'],
+        priority: 0,
+      },
+      {
+        facilityId: facility.id,
+        name: 'Peak Hour Surcharge',
+        basePrice: 800,
+        startTime: '17:00',
+        endTime: '22:00',
+        daysOfWeek: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'],
+        priority: 10,
+      },
+      {
+        facilityId: facility.id,
+        name: 'Weekend Special',
+        basePrice: 1000,
+        daysOfWeek: ['SATURDAY', 'SUNDAY'],
+        priority: 5,
+      }
+    ]
+  });
+
+  // 11. Availability Block (Phase 55 focus)
+  await prisma.availabilityBlock.deleteMany({ where: { facilityId: facility.id } });
+  await prisma.availabilityBlock.create({
     data: {
-      facilityId: fac1.id,
-      name: 'Standard Hourly Rate',
-      basePrice: 1200,
-      currency: 'INR',
-    },
+      facilityId: facility.id,
+      startTime: new Date('2026-08-30T10:00:00Z'),
+      endTime: new Date('2026-08-30T12:00:00Z'),
+      reason: 'MAINTENANCE',
+      notes: 'Monthly turf cleaning',
+    }
   });
 
-  console.log('Seed completed successfully with partner data');
+  console.log('Seed Phase 55 completed successfully');
 }
 
 main()

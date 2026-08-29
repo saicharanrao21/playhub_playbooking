@@ -332,6 +332,10 @@ model Facility {
   capacity     Int?
   status       FacilityStatus @default(ACTIVE)
   displayOrder Int            @default(0)
+
+  defaultSlotDuration    Int      @default(60)
+  supportedSlotDurations Int[]
+
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
@@ -366,6 +370,8 @@ model Booking {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
+  priceSnapshot  Json?
+
   organization Organization @relation(fields: [organizationId], references: [id])
   facility     Facility     @relation(fields: [facilityId], references: [id])
   user         User         @relation(fields: [userId], references: [id])
@@ -390,7 +396,7 @@ model OperatingHours {
 
   venue Venue @relation(fields: [venueId], references: [id])
 
-  @@unique([venueId, dayOfWeek])
+  @@index([venueId, dayOfWeek])
   @@map("operating_hours")
 }
 
@@ -402,6 +408,9 @@ model AvailabilityBlock {
   reason     BlockReason @default(OTHER)
   notes      String?
   createdAt  DateTime    @default(now())
+
+  isRecurring Boolean     @default(false)
+  dayOfWeek   DayOfWeek?
 
   facility Facility @relation(fields: [facilityId], references: [id])
 
@@ -420,6 +429,12 @@ model PricingRule {
   effectiveTo   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  startTime  String? // HH:mm
+  endTime    String? // HH:mm
+  daysOfWeek DayOfWeek[]
+  priority   Int @default(0)
+  isActive   Boolean @default(true)
 
   facility Facility @relation(fields: [facilityId], references: [id])
 

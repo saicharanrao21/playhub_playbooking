@@ -34,6 +34,31 @@ abstract class IPartnerRepository {
     Map<String, dynamic> data,
   );
   Future<List<PartnerBookingItem>> getBookings(String organizationId);
+
+  // Pricing Rules
+  Future<List<PricingRule>> getPricingRules(String organizationId, String facilityId);
+  Future<PricingRule?> createPricingRule(
+    String organizationId,
+    String facilityId,
+    CreatePricingRuleRequest request,
+  );
+  Future<void> deletePricingRule(
+    String organizationId,
+    String facilityId,
+    String ruleId,
+  );
+
+  // Availability Blocks
+  Future<void> createAvailabilityBlock(
+    String organizationId,
+    String facilityId,
+    Map<String, dynamic> data,
+  );
+  Future<void> deleteAvailabilityBlock(
+    String organizationId,
+    String facilityId,
+    String blockId,
+  );
 }
 
 class PartnerRepositoryImpl implements IPartnerRepository {
@@ -435,5 +460,75 @@ class PartnerRepositoryImpl implements IPartnerRepository {
         paymentStatus: 'PAID',
       ),
     ];
+  }
+
+  @override
+  Future<List<PricingRule>> getPricingRules(String organizationId, String facilityId) async {
+    try {
+      final response = await _apiClient.get<List<dynamic>>(
+        '/organizations/$organizationId/facilities/$facilityId/pricing-rules',
+        headers: {'x-organization-id': organizationId},
+      );
+      if (response.isSuccess && response.data != null) {
+        return response.data!.map((r) => PricingRule.fromJson(r as Map<String, dynamic>)).toList();
+      }
+    } catch (e) {
+      AppLogger.warning('Backend getPricingRules failed: $e');
+    }
+    return [];
+  }
+
+  @override
+  Future<PricingRule?> createPricingRule(String organizationId, String facilityId, CreatePricingRuleRequest request) async {
+    try {
+      final response = await _apiClient.post<Map<String, dynamic>>(
+        '/organizations/$organizationId/facilities/$facilityId/pricing-rules',
+        data: request.toJson(),
+        headers: {'x-organization-id': organizationId},
+      );
+      if (response.isSuccess && response.data != null) {
+        return PricingRule.fromJson(response.data!);
+      }
+    } catch (e) {
+      AppLogger.warning('Backend createPricingRule failed: $e');
+    }
+    return null;
+  }
+
+  @override
+  Future<void> deletePricingRule(String organizationId, String facilityId, String ruleId) async {
+    try {
+      await _apiClient.delete(
+        '/organizations/$organizationId/facilities/$facilityId/pricing-rules/$ruleId',
+        headers: {'x-organization-id': organizationId},
+      );
+    } catch (e) {
+      AppLogger.warning('Backend deletePricingRule failed: $e');
+    }
+  }
+
+  @override
+  Future<void> createAvailabilityBlock(String organizationId, String facilityId, Map<String, dynamic> data) async {
+    try {
+      await _apiClient.post(
+        '/organizations/$organizationId/facilities/$facilityId/blocks',
+        data: data,
+        headers: {'x-organization-id': organizationId},
+      );
+    } catch (e) {
+      AppLogger.warning('Backend createAvailabilityBlock failed: $e');
+    }
+  }
+
+  @override
+  Future<void> deleteAvailabilityBlock(String organizationId, String facilityId, String blockId) async {
+    try {
+      await _apiClient.delete(
+        '/organizations/$organizationId/facilities/$facilityId/blocks/$blockId',
+        headers: {'x-organization-id': organizationId},
+      );
+    } catch (e) {
+      AppLogger.warning('Backend deleteAvailabilityBlock failed: $e');
+    }
   }
 }

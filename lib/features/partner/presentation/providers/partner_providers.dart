@@ -74,3 +74,10 @@ final partnerBookingsProvider = FutureProvider.autoDispose<List<PartnerBookingIt
   final orgId = currentOrg?.id ?? 'default_org';
   return repo.getBookings(orgId);
 });
+
+final partnerPricingRulesProvider = FutureProvider.autoDispose.family<List<PricingRule>, String>((ref, facilityId) async {
+  final repo = ref.watch(partnerRepositoryProvider);
+  final currentOrg = ref.watch(currentPartnerOrgProvider);
+  if (currentOrg == null) return const [];
+  return repo.getPricingRules(currentOrg.id, facilityId);
+});

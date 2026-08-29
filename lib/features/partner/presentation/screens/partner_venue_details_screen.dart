@@ -144,28 +144,54 @@ class PartnerVenueDetailsScreen extends ConsumerWidget {
                           final facility = facilities[idx];
                           return Card(
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: colorScheme.secondaryContainer,
-                                child: Icon(Icons.sports_soccer, color: colorScheme.secondary, size: 20),
-                              ),
-                              title: Text(facility.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                              subtitle: Text('Capacity: ${facility.capacity} Players • ${facility.categoryName ?? "Sports"}', style: const TextStyle(fontSize: 12)),
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: facility.status == PartnerFacilityStatus.active ? Colors.green.withValues(alpha: 0.15) : Colors.orange.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  facility.status.label,
-                                  style: TextStyle(
-                                    color: facility.status == PartnerFacilityStatus.active ? Colors.green : Colors.orange,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 10,
+                            child: Column(
+                              children: [
+                                ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: colorScheme.secondaryContainer,
+                                    child: Icon(Icons.sports_soccer, color: colorScheme.secondary, size: 20),
+                                  ),
+                                  title: Text(facility.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                  subtitle: Text('Capacity: ${facility.capacity} Players • ${facility.categoryName ?? "Sports"}', style: const TextStyle(fontSize: 12)),
+                                  trailing: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: facility.status == PartnerFacilityStatus.active ? Colors.green.withValues(alpha: 0.15) : Colors.orange.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      facility.status.label,
+                                      style: TextStyle(
+                                        color: facility.status == PartnerFacilityStatus.active ? Colors.green : Colors.orange,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 10,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                                const Divider(height: 1),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                  child: Row(
+                                    children: [
+                                      TextButton.icon(
+                                        onPressed: () => context.push(
+                                          '/partner/venues/$venueId/facilities/${facility.id}/pricing',
+                                          extra: {'facilityName': facility.name},
+                                        ),
+                                        icon: const Icon(Icons.payments_outlined, size: 16),
+                                        label: const Text('Manage Pricing', style: TextStyle(fontSize: 12)),
+                                      ),
+                                      const Spacer(),
+                                      TextButton.icon(
+                                        onPressed: () {},
+                                        icon: const Icon(Icons.event_busy_outlined, size: 16),
+                                        label: const Text('Block Slot', style: TextStyle(fontSize: 12)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           );
                         },

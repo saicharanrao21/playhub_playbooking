@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:playhub_playbooking/features/bookings/presentation/providers/booking_provider.dart';
 import 'package:playhub_playbooking/features/availability/presentation/providers/availability_provider.dart';
+import 'package:playhub_playbooking/features/availability/domain/models/availability_models.dart';
 import 'package:playhub_playbooking/shared/components/empty_view.dart';
 import 'package:playhub_playbooking/shared/components/error_view.dart';
 import 'package:playhub_playbooking/shared/components/loading_indicator.dart';
@@ -152,7 +153,7 @@ class _RescheduleScreenState extends ConsumerState<RescheduleScreen> {
                   itemCount: availability.slots.length,
                   itemBuilder: (context, index) {
                     final slot = availability.slots[index];
-                    final timeStr = '${DateFormat('h:mm a').format(slot.start)} - ${DateFormat('h:mm a').format(slot.end)}';
+                    final timeStr = '${DateFormat('h:mm a').format(slot.startTime)} - ${DateFormat('h:mm a').format(slot.endTime)}';
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -165,7 +166,7 @@ class _RescheduleScreenState extends ConsumerState<RescheduleScreen> {
                         title: Text(timeStr, style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: const Text('Available for reschedule', style: TextStyle(fontSize: 12, color: Colors.green)),
                         trailing: ElevatedButton(
-                          onPressed: _isSubmitting ? null : () => _reschedule(slot.start, slot.end),
+                          onPressed: _isSubmitting ? null : () => _reschedule(slot.startTime, slot.endTime),
                           style: ElevatedButton.styleFrom(
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),

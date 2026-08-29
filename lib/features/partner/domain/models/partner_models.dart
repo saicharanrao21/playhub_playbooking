@@ -443,3 +443,81 @@ class CreatePartnerFacilityRequest {
         'status': status,
       };
 }
+
+@immutable
+class PricingRule {
+  final String id;
+  final String name;
+  final double basePrice;
+  final String currency;
+  final DateTime? effectiveFrom;
+  final DateTime? effectiveTo;
+  final String? startTime;
+  final String? endTime;
+  final List<String> daysOfWeek;
+  final int priority;
+  final bool isActive;
+
+  const PricingRule({
+    required this.id,
+    required this.name,
+    required this.basePrice,
+    this.currency = 'INR',
+    this.effectiveFrom,
+    this.effectiveTo,
+    this.startTime,
+    this.endTime,
+    this.daysOfWeek = const [],
+    this.priority = 0,
+    this.isActive = true,
+  });
+
+  factory PricingRule.fromJson(Map<String, dynamic> json) {
+    return PricingRule(
+      id: json['id'],
+      name: json['name'],
+      basePrice: (json['basePrice'] as num).toDouble(),
+      currency: json['currency'] ?? 'INR',
+      effectiveFrom: json['effectiveFrom'] != null ? DateTime.parse(json['effectiveFrom']) : null,
+      effectiveTo: json['effectiveTo'] != null ? DateTime.parse(json['effectiveTo']) : null,
+      startTime: json['startTime'],
+      endTime: json['endTime'],
+      daysOfWeek: (json['daysOfWeek'] as List? ?? []).map((e) => e.toString()).toList(),
+      priority: json['priority'] ?? 0,
+      isActive: json['isActive'] ?? true,
+    );
+  }
+}
+
+class CreatePricingRuleRequest {
+  final String name;
+  final double basePrice;
+  final String? startTime;
+  final String? endTime;
+  final List<String>? daysOfWeek;
+  final DateTime? effectiveFrom;
+  final DateTime? effectiveTo;
+  final int priority;
+
+  const CreatePricingRuleRequest({
+    required this.name,
+    required this.basePrice,
+    this.startTime,
+    this.endTime,
+    this.daysOfWeek,
+    this.effectiveFrom,
+    this.effectiveTo,
+    this.priority = 0,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'basePrice': basePrice,
+        if (startTime != null) 'startTime': startTime,
+        if (endTime != null) 'endTime': endTime,
+        if (daysOfWeek != null) 'daysOfWeek': daysOfWeek,
+        if (effectiveFrom != null) 'effectiveFrom': effectiveFrom!.toIso8601String(),
+        if (effectiveTo != null) 'effectiveTo': effectiveTo!.toIso8601String(),
+        'priority': priority,
+      };
+}
