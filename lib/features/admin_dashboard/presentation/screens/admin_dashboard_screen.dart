@@ -137,6 +137,17 @@ class AdminDashboardScreen extends ConsumerWidget {
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => context.push('/admin-dashboard/activities'),
                       ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: Icon(Icons.people_outline, color: colorScheme.primary),
+                        ),
+                        title: const Text('User Management & RBAC', style: TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: const Text('View registered users, roles, and status'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/admin-dashboard/users'),
+                      ),
                     ],
                   ),
                 ),

@@ -249,11 +249,7 @@ class _HomeContent extends ConsumerWidget {
                   _QuickAction(
                     icon: Icons.emoji_events_outlined,
                     label: 'Tournaments',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Tournaments registration opens this weekend!')),
-                      );
-                    },
+                    onTap: () => context.push('/tournaments'),
                   ),
                   _QuickAction(
                     icon: Icons.near_me_outlined,

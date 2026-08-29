@@ -32,10 +32,16 @@ import '../../features/venues/presentation/screens/facility_management_screen.da
 import '../../features/venues/presentation/screens/venue_create_screen.dart';
 import '../../features/venues/presentation/screens/venue_management_screen.dart';
 import '../../features/business_dashboard/presentation/screens/organization_profile_screen.dart';
-import '../../features/admin_dashboard/presentation/screens/activity_management_screen.dart';
+import '../../features/search/presentation/screens/search_screen.dart';
+import '../../features/tournaments/presentation/screens/tournaments_screen.dart';
+import '../../features/tournaments/presentation/screens/tournament_details_screen.dart';
+import '../../features/home/presentation/screens/match_details_screen.dart';
+import '../../features/profile/presentation/screens/account_security_screen.dart';
+import '../../features/profile/presentation/screens/help_support_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/city_management_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/category_management_screen.dart';
-import '../../features/search/presentation/screens/search_screen.dart';
+import '../../features/admin_dashboard/presentation/screens/activity_management_screen.dart';
+import '../../features/admin_dashboard/presentation/screens/user_management_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -134,6 +140,25 @@ final routerProvider = Provider<GoRouter>((ref) {
             VenueDetailsScreen(venueId: state.pathParameters['id']!),
       ),
       GoRoute(
+        path: '/tournaments',
+        name: 'tournaments',
+        builder: (context, state) => const TournamentsScreen(),
+      ),
+      GoRoute(
+        path: '/tournament/:id',
+        name: 'tournament_details',
+        builder: (context, state) =>
+            TournamentDetailsScreen(tournamentId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/match/:id',
+        name: 'match_details',
+        builder: (context, state) => MatchDetailsScreen(
+          matchId: state.pathParameters['id']!,
+          match: state.extra as MatchItem?,
+        ),
+      ),
+      GoRoute(
         path: '/profile',
         name: 'profile',
         builder: (context, state) => const ProfileScreen(),
@@ -142,6 +167,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'notifications',
             name: 'notification_preferences',
             builder: (context, state) => const NotificationPreferencesScreen(),
+          ),
+          GoRoute(
+            path: 'security',
+            name: 'account_security',
+            builder: (context, state) => const AccountSecurityScreen(),
+          ),
+          GoRoute(
+            path: 'help',
+            name: 'help_support',
+            builder: (context, state) => const HelpSupportScreen(),
           ),
         ],
       ),
@@ -298,6 +333,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'activities',
             name: 'admin_activities',
             builder: (context, state) => const ActivityManagementScreen(),
+          ),
+          GoRoute(
+            path: 'users',
+            name: 'admin_users',
+            builder: (context, state) => const UserManagementScreen(),
           ),
         ],
       ),

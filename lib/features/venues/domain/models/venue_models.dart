@@ -75,6 +75,9 @@ class Venue {
   final VenueStatus status;
   final String? categoryId;
   final List<Media> media;
+  final List<String> amenities;
+  final double rating;
+  final int reviewCount;
   final List<Facility>? facilities;
   final List<OperatingHours>? operatingHours;
 
@@ -96,6 +99,9 @@ class Venue {
     required this.status,
     this.categoryId,
     required this.media,
+    this.amenities = const [],
+    this.rating = 4.8,
+    this.reviewCount = 0,
     this.facilities,
     this.operatingHours,
   });
@@ -124,6 +130,9 @@ class Venue {
       status: VenueStatus.values.byName(_toCamelCase(json['status'])),
       categoryId: json['categoryId'],
       media: (json['media'] as List?)?.map((m) => Media.fromJson(m)).toList() ?? [],
+      amenities: (json['amenities'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      rating: (json['rating'] as num?)?.toDouble() ?? 4.8,
+      reviewCount: json['reviewCount'] ?? 0,
       facilities: (json['facilities'] as List?)?.map((f) => Facility.fromJson(f)).toList(),
       operatingHours: (json['operatingHours'] as List?)?.map((h) => OperatingHours.fromJson(h)).toList(),
     );

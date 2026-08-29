@@ -382,11 +382,7 @@ class _PostCard extends ConsumerWidget {
                 const SizedBox(width: 16),
                 IconButton(
                   icon: Icon(Icons.chat_bubble_outline, color: colorScheme.onSurfaceVariant),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Comments view opened')),
-                    );
-                  },
+                  onPressed: () => _showCommentsModal(context, ref, post),
                 ),
                 Text('${post.comments}', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13)),
                 const Spacer(),
@@ -405,4 +401,123 @@ class _PostCard extends ConsumerWidget {
       ),
     );
   }
+
+  void _showCommentsModal(BuildContext context, WidgetRef ref, CommunityPostItem post) {
+    final commentController = TextEditingController();
+    final repo = ref.read(communityRepositoryProvider);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => FutureBuilder<List<CommunityCommentItem>>(
+          future: repo.getComments(post.id),
+          builder: (context, snapshot) {
+            final comments = snapshot.data ?? [];
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.65,
+              padding: EdgeInsets.only(
+                top: 20,
+                left: 16,
+                right: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Comments (${comments.length})',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: comments.isEmpty
+                        ? const Center(
+                            child: Text('No comments yet. Be the first to join the conversation!'),
+                          )
+                        : ListView.separated(
+                            itemCount: comments.length,
+                            separatorBuilder: (c, i) => const Divider(height: 16),
+                            itemBuilder: (context, index) {
+                              final c = comments[index];
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                    child: Text(
+                                      c.authorName.isNotEmpty ? c.authorName[0].toUpperCase() : 'U',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          c.authorName,
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(c.text, style: const TextStyle(fontSize: 13)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: commentController,
+                          decoration: InputDecoration(
+                            hintText: 'Add a comment...',
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filled(
+                        icon: const Icon(Icons.send, size: 18),
+                        onPressed: () async {
+                          final text = commentController.text.trim();
+                          if (text.isEmpty) return;
+                          commentController.clear();
+                          await repo.addComment(post.id, text);
+                          ref.invalidate(communityFeedProvider);
+                          setModalState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 }
+

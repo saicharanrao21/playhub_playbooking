@@ -320,14 +320,19 @@ class MatchItem {
   final DateTime endTime;
   final int maxPlayers;
   final int currentPlayers;
+  final String hostName;
   final String skillLevelRequired;
   final double pricePerPlayer;
   final MatchStatus status;
   final bool isPrivate;
+  final bool isJoined;
+
+  String get skillLevel => skillLevelRequired;
 
   MatchItem({
     required this.id,
     required this.hostId,
+    this.hostName = 'Match Host',
     this.venueId,
     required this.venueName,
     required this.location,
@@ -342,12 +347,14 @@ class MatchItem {
     required this.pricePerPlayer,
     this.status = MatchStatus.open,
     this.isPrivate = false,
+    this.isJoined = false,
   });
 
   factory MatchItem.fromJson(Map<String, dynamic> json) {
     return MatchItem(
       id: json['id'] ?? '',
       hostId: json['hostId'] ?? '',
+      hostName: json['hostName'] ?? json['host']?['displayName'] ?? 'Match Host',
       venueId: json['venueId'],
       venueName: json['venueName'] ?? 'PlayHub Arena',
       location: json['location'] ?? 'Hyderabad',
@@ -362,6 +369,7 @@ class MatchItem {
       pricePerPlayer: (json['pricePerPlayer'] as num?)?.toDouble() ?? 150.0,
       status: MatchStatus.values.firstWhere((e) => e.name == json['status'], orElse: () => MatchStatus.open),
       isPrivate: json['isPrivate'] ?? false,
+      isJoined: json['isJoined'] ?? false,
     );
   }
 }
@@ -440,6 +448,86 @@ class WalletTransactionItem {
     required this.subtitle,
     required this.amount,
     required this.isCredit,
+    required this.createdAt,
+  });
+}
+
+enum TournamentStatus {
+  upcoming,
+  ongoing,
+  completed,
+}
+
+class TournamentItem {
+  final String id;
+  final String title;
+  final String sport;
+  final String venueName;
+  final String location;
+  final DateTime startDate;
+  final DateTime endDate;
+  final double entryFee;
+  final double prizePool;
+  final int maxTeams;
+  final int registeredTeams;
+  final String format; // Knockout, League, Group + Knockout
+  final TournamentStatus status;
+  final String? bannerUrl;
+  final String description;
+  final List<String> rules;
+
+  TournamentItem({
+    required this.id,
+    required this.title,
+    required this.sport,
+    required this.venueName,
+    required this.location,
+    required this.startDate,
+    required this.endDate,
+    required this.entryFee,
+    required this.prizePool,
+    required this.maxTeams,
+    required this.registeredTeams,
+    required this.format,
+    required this.status,
+    this.bannerUrl,
+    required this.description,
+    required this.rules,
+  });
+}
+
+class CommunityCommentItem {
+  final String id;
+  final String postId;
+  final String authorName;
+  final String? authorAvatar;
+  final String text;
+  final DateTime createdAt;
+
+  CommunityCommentItem({
+    required this.id,
+    required this.postId,
+    required this.authorName,
+    this.authorAvatar,
+    required this.text,
+    required this.createdAt,
+  });
+}
+
+class AdminUserItem {
+  final String id;
+  final String displayName;
+  final String email;
+  final UserRole role;
+  final bool isActive;
+  final DateTime createdAt;
+
+  AdminUserItem({
+    required this.id,
+    required this.displayName,
+    required this.email,
+    required this.role,
+    required this.isActive,
     required this.createdAt,
   });
 }

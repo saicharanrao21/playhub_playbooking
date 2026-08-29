@@ -227,3 +227,14 @@ final matchRepositoryProvider = Provider<MatchRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return MatchRepositoryImpl(apiClient: apiClient);
 });
+
+final matchesFilterSportProvider = StateProvider<String>((ref) => 'All');
+final matchesSearchQueryProvider = StateProvider<String>((ref) => '');
+
+final matchesListProvider = FutureProvider.autoDispose<List<MatchItem>>((ref) async {
+  final repo = ref.watch(matchRepositoryProvider);
+  final sport = ref.watch(matchesFilterSportProvider);
+  final search = ref.watch(matchesSearchQueryProvider);
+  return repo.getMatches(sport: sport, search: search);
+});
+

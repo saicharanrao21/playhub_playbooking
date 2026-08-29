@@ -22,6 +22,8 @@ class AppLoadingIndicator extends StatelessWidget {
   }
 }
 
+typedef LoadingIndicator = AppLoadingIndicator;
+
 class SkeletonCard extends StatelessWidget {
   final double height;
   final double width;

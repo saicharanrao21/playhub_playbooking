@@ -9,6 +9,8 @@ abstract class CommunityRepository {
   Future<bool> createPost(String content, {String? imageUrl, String communityName = 'Hyderabad Sports Club'});
   Future<bool> toggleLike(String postId);
   Future<bool> joinCommunity(String communityId);
+  Future<List<CommunityCommentItem>> getComments(String postId);
+  Future<bool> addComment(String postId, String text, {String authorName = 'You'});
 }
 
 class CommunityRepositoryImpl implements CommunityRepository {
@@ -164,6 +166,69 @@ class CommunityRepositoryImpl implements CommunityRepository {
       return true;
     }
     return false;
+  }
+
+  final Map<String, List<CommunityCommentItem>> _commentsMap = {
+    'post_001': [
+      CommunityCommentItem(
+        id: 'comm_c1',
+        postId: 'post_001',
+        authorName: 'Suresh Raina',
+        text: 'Count me in for Saturday! What time do we assemble?',
+        createdAt: DateTime.now().subtract(const Duration(minutes: 45)),
+      ),
+      CommunityCommentItem(
+        id: 'comm_c2',
+        postId: 'post_001',
+        authorName: 'Karthik V',
+        text: 'I can join as goalkeeper or defender. Let me know!',
+        createdAt: DateTime.now().subtract(const Duration(minutes: 20)),
+      ),
+    ],
+    'post_002': [
+      CommunityCommentItem(
+        id: 'comm_c3',
+        postId: 'post_002',
+        authorName: 'Manish Pandey',
+        text: 'Registered our team "Hitech Strikers" yesterday. Looking forward to the tournament!',
+        createdAt: DateTime.now().subtract(const Duration(hours: 3)),
+      ),
+    ],
+  };
+
+  @override
+  Future<List<CommunityCommentItem>> getComments(String postId) async {
+    return _commentsMap[postId] ?? [];
+  }
+
+  @override
+  Future<bool> addComment(String postId, String text, {String authorName = 'You'}) async {
+    final comment = CommunityCommentItem(
+      id: 'comm_c_${DateTime.now().millisecondsSinceEpoch}',
+      postId: postId,
+      authorName: authorName,
+      text: text,
+      createdAt: DateTime.now(),
+    );
+    _commentsMap.putIfAbsent(postId, () => []).add(comment);
+
+    final pIndex = _posts.indexWhere((p) => p.id == postId);
+    if (pIndex != -1) {
+      final p = _posts[pIndex];
+      _posts[pIndex] = CommunityPostItem(
+        id: p.id,
+        authorName: p.authorName,
+        authorAvatar: p.authorAvatar,
+        communityName: p.communityName,
+        content: p.content,
+        imageUrl: p.imageUrl,
+        likes: p.likes,
+        comments: p.comments + 1,
+        createdAt: p.createdAt,
+        isLiked: p.isLiked,
+      );
+    }
+    return true;
   }
 
   @override

@@ -337,6 +337,142 @@ class _VenueDetailsScreenState extends ConsumerState<VenueDetailsScreen> {
                           ),
                         ),
 
+                      const SizedBox(height: 24),
+
+                      // Ratings & Reviews Section
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Player Reviews & Ratings',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextButton.icon(
+                            icon: const Icon(Icons.rate_review_outlined, size: 16),
+                            label: const Text('Write Review'),
+                            onPressed: () {
+                              final reviewController = TextEditingController();
+                              double rating = 5.0;
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                                ),
+                                builder: (ctx) => StatefulBuilder(
+                                  builder: (context, setModalState) => Padding(
+                                    padding: EdgeInsets.only(
+                                      top: 24,
+                                      left: 24,
+                                      right: 24,
+                                      bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Rate & Review ${venue.name}',
+                                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: List.generate(5, (index) {
+                                            return IconButton(
+                                              icon: Icon(
+                                                index < rating ? Icons.star : Icons.star_border,
+                                                color: Colors.amber,
+                                                size: 32,
+                                              ),
+                                              onPressed: () => setModalState(() => rating = index + 1.0),
+                                            );
+                                          }),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        TextField(
+                                          controller: reviewController,
+                                          maxLines: 3,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Share your experience (turf quality, lighting, parking...)',
+                                            alignLabelWithHint: true,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          height: 48,
+                                          child: ElevatedButton(
+                                            onPressed: () {
+                                              Navigator.pop(ctx);
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Thank you! Your review has been published.')),
+                                              );
+                                            },
+                                            child: const Text('Submit Review'),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      Card(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Column(
+                                    children: [
+                                      Text(
+                                        venue.rating > 0 ? venue.rating.toStringAsFixed(1) : '4.8',
+                                        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                                      ),
+                                      const Row(
+                                        children: [
+                                          Icon(Icons.star, color: Colors.amber, size: 16),
+                                          Icon(Icons.star, color: Colors.amber, size: 16),
+                                          Icon(Icons.star, color: Colors.amber, size: 16),
+                                          Icon(Icons.star, color: Colors.amber, size: 16),
+                                          Icon(Icons.star_half, color: Colors.amber, size: 16),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${venue.reviewCount > 0 ? venue.reviewCount : 128} reviews',
+                                        style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _buildReviewSnippet('Rahul S.', 5, 'Top notch turf quality and floodlights!'),
+                                        const SizedBox(height: 8),
+                                        _buildReviewSnippet('Vikram M.', 5, 'Good parking and clean changing rooms.'),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                       const SizedBox(height: 120), // Padding for sticky bottom sheet
                     ],
                   ),
@@ -419,6 +555,33 @@ class _VenueDetailsScreenState extends ConsumerState<VenueDetailsScreen> {
         },
         orElse: () => const SizedBox.shrink(),
       ),
+    );
+  }
+
+  Widget _buildReviewSnippet(String author, int stars, String comment) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(author, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            const SizedBox(width: 6),
+            Row(
+              children: List.generate(
+                stars,
+                (i) => const Icon(Icons.star, size: 12, color: Colors.amber),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          comment,
+          style: const TextStyle(fontSize: 12),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
 }

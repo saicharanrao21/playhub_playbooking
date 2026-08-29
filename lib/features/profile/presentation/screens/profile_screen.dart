@@ -222,11 +222,7 @@ class ProfileScreen extends ConsumerWidget {
                   Icons.security_outlined,
                   'Account Security',
                   'Password management & login sessions',
-                  () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Account security settings are up to date.')),
-                    );
-                  },
+                  () => context.push('/profile/security'),
                 ),
                 const Divider(height: 1),
                 _buildMenuItem(
@@ -234,11 +230,7 @@ class ProfileScreen extends ConsumerWidget {
                   Icons.help_outline,
                   'Help & Support',
                   'FAQs, live chat, and support tickets',
-                  () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Contact support: support@playhub.com')),
-                    );
-                  },
+                  () => context.push('/profile/help'),
                 ),
               ],
             ),

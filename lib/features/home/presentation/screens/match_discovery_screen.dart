@@ -8,15 +8,6 @@ import 'package:playhub_playbooking/shared/components/empty_view.dart';
 import 'package:playhub_playbooking/shared/components/error_view.dart';
 import 'package:playhub_playbooking/shared/components/loading_indicator.dart';
 
-final matchesFilterSportProvider = StateProvider<String>((ref) => 'All');
-final matchesSearchQueryProvider = StateProvider<String>((ref) => '');
-
-final matchesListProvider = FutureProvider.autoDispose<List<MatchItem>>((ref) async {
-  final repo = ref.watch(matchRepositoryProvider);
-  final sport = ref.watch(matchesFilterSportProvider);
-  final search = ref.watch(matchesSearchQueryProvider);
-  return repo.getMatches(sport: sport, search: search);
-});
 
 class MatchDiscoveryScreen extends ConsumerWidget {
   const MatchDiscoveryScreen({super.key});
@@ -237,8 +228,11 @@ class _MatchCardState extends ConsumerState<_MatchCard> {
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 1.5,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push('/match/${match.id}', extra: match),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -343,6 +337,7 @@ class _MatchCardState extends ConsumerState<_MatchCard> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

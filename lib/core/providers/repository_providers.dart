@@ -1,6 +1,7 @@
 export '../repositories/match_repository.dart';
 export '../repositories/community_repository.dart';
 export '../repositories/wallet_repository.dart';
+export '../../features/tournaments/data/tournament_repository.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/bootstrap/bootstrap.dart';
