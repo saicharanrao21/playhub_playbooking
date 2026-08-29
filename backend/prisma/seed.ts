@@ -221,7 +221,7 @@ async function main() {
     }
   });
 
-  // 13. Finance Foundation (Phase 57)
+  // 13. Finance Foundation
   const existingConfig = await prisma.commissionConfig.findFirst({ where: { organizationId: null } });
   if (!existingConfig) {
     await prisma.commissionConfig.create({
@@ -234,7 +234,48 @@ async function main() {
     });
   }
 
-  console.log('Seed Phase 57 completed successfully');
+  // 14. Super Admin Foundation (Phase 58)
+  const superAdminUser = await prisma.user.upsert({
+    where: { email: 'superadmin@playhub.com' },
+    update: {},
+    create: {
+      email: 'superadmin@playhub.com',
+      fullName: 'Platform Super Admin',
+      passwordHash: passwordHash,
+      status: AccountStatus.ACTIVE,
+      isEmailVerified: true,
+    },
+  });
+
+  const platformOrg = await prisma.organization.upsert({
+    where: { slug: 'playhub-hq' },
+    update: {},
+    create: {
+      name: 'PlayHub Headquarters',
+      slug: 'playhub-hq',
+      status: OrganizationStatus.ACTIVE,
+      kycStatus: KYCStatus.APPROVED,
+    },
+  });
+
+  let platformRole = await prisma.role.findUnique({ where: { name: 'PLATFORM_ADMIN' } });
+  if (!platformRole) {
+    platformRole = await prisma.role.create({
+      data: { name: 'PLATFORM_ADMIN', description: 'Global Platform Administrator' },
+    });
+  }
+
+  await prisma.membership.upsert({
+    where: { userId_organizationId: { userId: superAdminUser.id, organizationId: platformOrg.id } },
+    update: {},
+    create: {
+      userId: superAdminUser.id,
+      organizationId: platformOrg.id,
+      roles: { connect: [{ id: platformRole.id }] },
+    },
+  });
+
+  console.log('Seed Phase 58 completed successfully');
 }
 
 main()

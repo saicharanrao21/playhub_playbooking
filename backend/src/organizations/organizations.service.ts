@@ -194,6 +194,13 @@ export class OrganizationsService {
     };
   }
 
+  async getMembers(organizationId: string) {
+    return this.prisma.membership.findMany({
+      where: { organizationId },
+      include: { user: true },
+    });
+  }
+
   async getMembership(userId: string, organizationId: string) {
     return this.prisma.membership.findUnique({
       where: {

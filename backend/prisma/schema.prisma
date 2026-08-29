@@ -207,6 +207,7 @@ model Organization {
   settlements           Settlement[]
   payouts               Payout[]
   commissionConfigs     CommissionConfig[]
+  auditLogs             AuditLog[]
 
   @@map("organizations")
 }
@@ -532,17 +533,19 @@ model RefreshToken {
 }
 
 model AuditLog {
-  id         String   @id @default(uuid())
-  userId     String?
-  action     String
-  resource   String?
-  resourceId String?
-  payload    Json?
-  ipAddress  String?
-  status     String // 'success' or 'failure'
-  createdAt  DateTime @default(now())
+  id             String   @id @default(uuid())
+  userId         String?
+  organizationId String?
+  action         String
+  resource       String?
+  resourceId     String?
+  payload        Json?
+  ipAddress      String?
+  status         String // 'success' or 'failure'
+  createdAt      DateTime @default(now())
 
-  user User? @relation(fields: [userId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
 
   @@map("audit_logs")
 }

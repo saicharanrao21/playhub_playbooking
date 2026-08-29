@@ -92,3 +92,4 @@ export class BookingEventsListener {
       payload: { ...payload },
     });
   }
+}

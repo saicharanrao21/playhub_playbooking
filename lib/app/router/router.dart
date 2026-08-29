@@ -42,6 +42,9 @@ import '../../features/admin_dashboard/presentation/screens/city_management_scre
 import '../../features/admin_dashboard/presentation/screens/category_management_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/activity_management_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/user_management_screen.dart';
+import '../../features/admin_dashboard/presentation/screens/admin_partner_queue_screen.dart';
+import '../../features/admin_dashboard/presentation/screens/admin_partner_details_screen.dart';
+import '../../features/admin_dashboard/presentation/screens/admin_audit_log_screen.dart';
 import '../../features/partner/presentation/screens/partner_entry_screen.dart';
 import '../../features/partner/presentation/screens/partner_onboarding_screen.dart';
 import '../../features/partner/presentation/screens/partner_shell_screen.dart';
@@ -350,6 +353,25 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'users',
             name: 'admin_users',
             builder: (context, state) => const UserManagementScreen(),
+          ),
+          GoRoute(
+            path: 'partners',
+            name: 'admin_partners',
+            builder: (context, state) => AdminPartnerQueueScreen(
+              initialStatus: state.uri.queryParameters['status'],
+            ),
+          ),
+          GoRoute(
+            path: 'partners/:id',
+            name: 'admin_partner_details',
+            builder: (context, state) => AdminPartnerDetailsScreen(
+              partnerId: state.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
+            path: 'audit',
+            name: 'admin_audit',
+            builder: (context, state) => const AdminAuditLogScreen(),
           ),
         ],
       ),

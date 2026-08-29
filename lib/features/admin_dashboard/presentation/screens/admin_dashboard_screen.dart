@@ -2,25 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:playhub_playbooking/features/admin_dashboard/presentation/providers/admin_provider.dart';
-import 'package:playhub_playbooking/core/providers/repository_providers.dart';
 import 'package:playhub_playbooking/shared/components/error_view.dart';
 import 'package:playhub_playbooking/shared/components/loading_indicator.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
-
-  Future<void> _approveBusiness(BuildContext context, WidgetRef ref, String id) async {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final repo = ref.read(adminRepositoryProvider);
-    final success = await repo.approveBusiness(id);
-    
-    if (success) {
-      scaffoldMessenger.showSnackBar(const SnackBar(content: Text('Business approved!')));
-      ref.invalidate(adminStatsProvider);
-    } else {
-      scaffoldMessenger.showSnackBar(const SnackBar(content: Text('Failed to approve business.')));
-    }
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -67,6 +53,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                       '${stats?.totalUsers ?? 0}',
                       Icons.people_alt_outlined,
                       Colors.blue,
+                      onTap: () => context.push('/admin-dashboard/users'),
                     ),
                     _buildAdminStatCard(
                       context,
@@ -85,9 +72,10 @@ class AdminDashboardScreen extends ConsumerWidget {
                     _buildAdminStatCard(
                       context,
                       'Pending Reviews',
-                      '${stats?.pendingBusinesses.length ?? 0}',
+                      '${stats?.pendingKYC ?? 0}',
                       Icons.verified_user_outlined,
                       Colors.purple,
+                      onTap: () => context.push('/admin-dashboard/partners?status=SUBMITTED'),
                     ),
                   ],
                 ),
@@ -148,6 +136,28 @@ class AdminDashboardScreen extends ConsumerWidget {
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => context.push('/admin-dashboard/users'),
                       ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: Icon(Icons.history, color: colorScheme.primary),
+                        ),
+                        title: const Text('Platform Audit Trail', style: TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: const Text('Track all administrative and security actions'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/admin-dashboard/audit'),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: Icon(Icons.assignment_ind_outlined, color: colorScheme.primary),
+                        ),
+                        title: const Text('Partner Applications', style: TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: const Text('Review and approve new sports venue partners'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/admin-dashboard/partners'),
+                      ),
                     ],
                   ),
                 ),
@@ -156,55 +166,39 @@ class AdminDashboardScreen extends ConsumerWidget {
 
                 // Organization Approvals
                 Text(
-                  'Pending Venue & Partner Approvals',
+                  'Pending Action Items',
                   style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
 
-                if (stats != null && stats.pendingBusinesses.isNotEmpty)
-                  Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: stats.pendingBusinesses.length,
-                      separatorBuilder: (context, index) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final biz = stats.pendingBusinesses[index];
-                        return ListTile(
-                          title: Text(biz['displayName'] ?? 'Sports Partner Request', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('Org: ${biz['organization']?['name'] ?? 'PlayHub Partner'}'),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              TextButton(
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Application rejected.')),
-                                  );
-                                },
-                                child: const Text('Reject', style: TextStyle(color: Colors.red)),
-                              ),
-                              ElevatedButton(
-                                onPressed: () => _approveBusiness(context, ref, biz['id']),
-                                child: const Text('Approve'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  )
-                else
-                  Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    child: const Padding(
-                      padding: EdgeInsets.all(24.0),
-                      child: Center(
-                        child: Text('All venue partner applications are up to date!'),
+                Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: Colors.purple,
+                          child: Icon(Icons.verified_user, color: Colors.white, size: 20),
+                        ),
+                        title: const Text('Partner Applications', style: TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('${stats?.pendingKYC ?? 0} applications awaiting KYC review'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/admin-dashboard/partners?status=SUBMITTED'),
                       ),
-                    ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: Colors.orange,
+                          child: Icon(Icons.business, color: Colors.white, size: 20),
+                        ),
+                        title: const Text('New Businesses', style: TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('${stats?.pendingBusinesses ?? 0} businesses pending onboarding'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/admin-dashboard/partners'),
+                      ),
+                    ],
                   ),
+                ),
 
                 const SizedBox(height: 40),
               ],
@@ -232,37 +226,42 @@ class AdminDashboardScreen extends ConsumerWidget {
     String title,
     String value,
     IconData icon,
-    Color color,
-  ) {
+    Color color, {
+    VoidCallback? onTap,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(14.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Card(
+        elevation: 1,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(14.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 20),
               ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              title,
-              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 11),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                title,
+                style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 11),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ),
     );
