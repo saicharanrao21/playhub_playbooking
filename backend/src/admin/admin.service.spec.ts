@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AdminService } from './admin.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/services/audit.service';
+import { VenuesService } from '../venues/venues.service';
 import { KYCStatus, BusinessStatus } from '@prisma/client';
 
 describe('AdminService', () => {
@@ -22,12 +23,18 @@ describe('AdminService', () => {
     record: jest.fn(),
   };
 
+  const mockVenuesService = {
+    getVenuesMissingCoordinates: jest.fn().mockResolvedValue([]),
+    batchGeocodeVenues: jest.fn().mockResolvedValue({ total: 0, updatedCount: 0 }),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AdminService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: AuditService, useValue: mockAuditService },
+        { provide: VenuesService, useValue: mockVenuesService },
       ],
     }).compile();
 

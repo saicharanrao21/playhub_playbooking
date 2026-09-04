@@ -317,6 +317,8 @@ model Venue {
   @@index([cityId])
   @@index([city])
   @@index([status])
+  @@index([latitude, longitude])
+  @@index([status, latitude, longitude])
   @@map("venues")
 }
 

@@ -69,6 +69,9 @@ class Venue {
   final String? cityId;
   final double? latitude;
   final double? longitude;
+  final double? distanceMeters;
+  final double? distanceKm;
+  final String? distanceFormatted;
   final List<Media> media;
   final List<String> amenities;
   final double rating;
@@ -86,6 +89,9 @@ class Venue {
     this.cityId,
     this.latitude,
     this.longitude,
+    this.distanceMeters,
+    this.distanceKm,
+    this.distanceFormatted,
     required this.media,
     required this.amenities,
     required this.rating,
@@ -110,6 +116,9 @@ class Venue {
       cityId: json['cityId'],
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
+      distanceMeters: (json['distanceMeters'] as num?)?.toDouble(),
+      distanceKm: (json['distanceKm'] as num?)?.toDouble(),
+      distanceFormatted: json['distanceFormatted']?.toString(),
       media: (json['media'] as List?)?.map((e) => Media.fromJson(e)).toList() ?? [],
       amenities: (json['amenities'] as List?)?.map((e) => e as String).toList() ?? [],
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,

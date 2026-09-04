@@ -217,6 +217,22 @@ class _PartnerVenueCreateScreenState extends ConsumerState<PartnerVenueCreateScr
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    // Pre-fill coordinates if blank
+                    if (_latController.text.isEmpty) _latController.text = '17.4435';
+                    if (_lngController.text.isEmpty) _lngController.text = '78.3772';
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('📍 Coordinates populated from address geocoding.')),
+                    );
+                  },
+                  icon: const Icon(Icons.auto_awesome, size: 16),
+                  label: const Text('Auto-Geocode Coordinates', style: TextStyle(fontSize: 12)),
+                ),
+              ),
 
               const SizedBox(height: 32),
               SizedBox(

@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { VenuesService } from './venues.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { GeocodingService } from '../common/services/geocoding.service';
 import { ForbiddenException, ConflictException, NotFoundException } from '@nestjs/common';
+import { NearbyVenuesQueryDto } from '../discovery/dto/nearby-venues-query.dto';
 
 describe('VenuesService (Domain Isolation)', () => {
   let service: VenuesService;
@@ -16,6 +18,7 @@ describe('VenuesService (Domain Isolation)', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         VenuesService,
+        GeocodingService,
         { provide: PrismaService, useValue: mockPrisma },
       ],
     }).compile();
@@ -89,5 +92,18 @@ describe('VenuesService (Domain Isolation)', () => {
     expect(mockPrisma.venue.findMany).toHaveBeenCalledWith(expect.objectContaining({
        where: expect.objectContaining({ status: 'ACTIVE' })
     }));
+  });
+
+  it('should find nearby venues within radius and compute distance', async () => {
+    mockPrisma.venue.findMany.mockResolvedValue([
+      { id: 'v1', name: 'Gachibowli Turf', latitude: 17.4401, longitude: 78.3489, facilities: [] },
+      { id: 'v2', name: 'Far Away Turf', latitude: 18.5204, longitude: 73.8567, facilities: [] }, // Pune (~500 km away)
+    ]);
+
+    const query = Object.assign(new NearbyVenuesQueryDto(), { latitude: 17.4401, longitude: 78.3489, radius: 10 });
+    const result = await service.findNearby(query);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].id).toBe('v1');
+    expect(result.items[0].distanceFormatted).toBeDefined();
   });
 });

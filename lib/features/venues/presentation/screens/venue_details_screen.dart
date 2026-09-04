@@ -211,9 +211,32 @@ class _VenueDetailsScreenState extends ConsumerState<VenueDetailsScreen> {
                           Icon(Icons.location_on_outlined, color: colorScheme.primary, size: 20),
                           const SizedBox(width: 6),
                           Expanded(
-                            child: Text(
-                              '${venue.address}, ${venue.city}',
-                              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14, height: 1.3),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${venue.address}, ${venue.city}',
+                                  style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14, height: 1.3),
+                                ),
+                                if (venue.latitude != null && venue.longitude != null) ...[
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: colorScheme.primaryContainer,
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          'GPS: ${venue.latitude!.toStringAsFixed(4)}, ${venue.longitude!.toStringAsFixed(4)}',
+                                          style: TextStyle(fontSize: 11, color: colorScheme.primary, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                         ],

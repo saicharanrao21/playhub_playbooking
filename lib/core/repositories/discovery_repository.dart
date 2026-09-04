@@ -31,4 +31,39 @@ class DiscoveryRepository implements IDiscoveryRepository {
     }
     return [];
   }
+
+  @override
+  Future<List<Venue>> getNearbyVenues({
+    double? latitude,
+    double? longitude,
+    double radius = 10.0,
+    String? query,
+    String? cityId,
+    String? categoryId,
+    String? activityId,
+    String sortBy = 'distance',
+  }) async {
+    final Map<String, dynamic> params = {
+      'radius': radius.toString(),
+      'sortBy': sortBy,
+    };
+    if (latitude != null) params['latitude'] = latitude.toString();
+    if (longitude != null) params['longitude'] = longitude.toString();
+    if (query != null && query.isNotEmpty) params['query'] = query;
+    if (cityId != null) params['cityId'] = cityId;
+    if (categoryId != null) params['categoryId'] = categoryId;
+    if (activityId != null) params['activityId'] = activityId;
+
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      '/discovery/venues/nearby',
+      queryParameters: params,
+      authenticated: false,
+    );
+
+    if (response.isSuccess && response.data != null) {
+      final items = response.data!['items'] as List? ?? [];
+      return items.map((e) => Venue.fromJson(e)).toList();
+    }
+    return [];
+  }
 }

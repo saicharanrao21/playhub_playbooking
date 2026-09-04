@@ -33,6 +33,7 @@ import '../../features/venues/presentation/screens/venue_create_screen.dart';
 import '../../features/venues/presentation/screens/venue_management_screen.dart';
 import '../../features/business_dashboard/presentation/screens/organization_profile_screen.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
+import '../../features/search/presentation/screens/map_view_screen.dart';
 import '../../features/tournaments/presentation/screens/tournaments_screen.dart';
 import '../../features/tournaments/presentation/screens/tournament_details_screen.dart';
 import '../../features/home/presentation/screens/match_details_screen.dart';
@@ -132,6 +133,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           final extra = state.extra as Map<String, dynamic>?;
           return SearchScreen(initialCategoryId: extra?['categoryId']);
         },
+      ),
+      GoRoute(
+        path: '/map',
+        name: 'map_view',
+        builder: (context, state) => const MapViewScreen(),
       ),
       GoRoute(
         path: '/find-matches',

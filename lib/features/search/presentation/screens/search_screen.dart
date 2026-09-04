@@ -67,6 +67,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             setState(() {});
           },
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.map_outlined),
+            tooltip: 'Switch to Map View',
+            onPressed: () => context.push('/map'),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: categoriesAsync.when(

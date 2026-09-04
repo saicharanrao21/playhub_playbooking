@@ -45,4 +45,15 @@ abstract class IDiscoveryRepository {
     String? categoryId,
     String? activityId,
   });
+
+  Future<List<Venue>> getNearbyVenues({
+    double? latitude,
+    double? longitude,
+    double radius = 10.0,
+    String? query,
+    String? cityId,
+    String? categoryId,
+    String? activityId,
+    String sortBy = 'distance',
+  });
 }

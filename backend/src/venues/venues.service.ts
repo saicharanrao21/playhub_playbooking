@@ -1,14 +1,21 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateVenueDto } from './dto/create-venue.dto';
 import { UpdateVenueDto } from './dto/update-venue.dto';
 import { OperatingHoursDto } from './dto/operating-hours.dto';
 import { VenueStatus, FacilityStatus } from '@prisma/client';
 import { DiscoveryFiltersDto } from '../discovery/dto/discovery-filters.dto';
+import { NearbyVenuesQueryDto, DiscoverySortBy } from '../discovery/dto/nearby-venues-query.dto';
+import { GeocodingService } from '../common/services/geocoding.service';
 
 @Injectable()
 export class VenuesService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(VenuesService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private geocodingService: GeocodingService,
+  ) {}
 
   async create(organizationId: string, businessId: string, dto: CreateVenueDto) {
     // 1. Verify business ownership by organization
@@ -34,9 +41,20 @@ export class VenuesService {
       throw new ConflictException('Venue with this slug already exists for this business');
     }
 
+    // Auto-geocode if lat/lng are not explicitly provided
+    let lat = dto.latitude;
+    let lng = dto.longitude;
+    if (lat === undefined || lng === undefined) {
+      const geo = await this.geocodingService.geocodeAddress(dto.address, dto.city);
+      lat = geo.latitude;
+      lng = geo.longitude;
+    }
+
     return this.prisma.venue.create({
       data: {
         ...dto,
+        latitude: lat,
+        longitude: lng,
         businessId,
       },
     });
@@ -86,6 +104,139 @@ export class VenuesService {
     ]);
 
     return { items, total };
+  }
+
+  /**
+   * High-performance radius search using bounding-box index filtering + exact Haversine calculation.
+   */
+  async findNearby(query: NearbyVenuesQueryDto) {
+    // Default coordinates (e.g. Hyderabad center) if lat/lng not provided
+    const userLat = query.latitude ?? 17.4401;
+    const userLng = query.longitude ?? 78.3489;
+    const radiusKm = query.radius ?? 10.0;
+
+    // 1. Calculate Bounding Box for PostgreSQL Index Usage
+    const box = this.geocodingService.getBoundingBox(userLat, userLng, radiusKm);
+
+    const where: any = {
+      status: VenueStatus.ACTIVE,
+      latitude: { gte: box.minLat, lte: box.maxLat },
+      longitude: { gte: box.minLng, lte: box.maxLng },
+      ...(query.cityId ? { cityId: query.cityId } : {}),
+      ...(query.query
+        ? {
+            OR: [
+              { name: { contains: query.query, mode: 'insensitive' as const } },
+              { description: { contains: query.query, mode: 'insensitive' as const } },
+              { address: { contains: query.query, mode: 'insensitive' as const } },
+              { city: { contains: query.query, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+      ...(query.categoryId || query.activityId
+        ? {
+            facilities: {
+              some: {
+                status: FacilityStatus.ACTIVE,
+                ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+                ...(query.activityId ? { activityId: query.activityId } : {}),
+              },
+            },
+          }
+        : {}),
+    };
+
+    // Fetch candidate venues matching bounding box index
+    const candidates = await this.prisma.venue.findMany({
+      where,
+      include: {
+        facilities: {
+          where: { status: FacilityStatus.ACTIVE },
+          include: { category: true, activity: true, media: true, pricingRules: { where: { isActive: true } } },
+        },
+        cityRel: true,
+        media: true,
+      },
+    });
+
+    // 2. Exact Haversine Distance Calculation & Radius Filtering
+    const venuesWithDistance = candidates
+      .map((v) => {
+        const vLat = v.latitude!;
+        const vLng = v.longitude!;
+        const distMeters = this.geocodingService.calculateDistanceMeters(userLat, userLng, vLat, vLng);
+        const distKm = distMeters / 1000.0;
+
+        return {
+          ...v,
+          distanceMeters: distMeters,
+          distanceKm: distKm,
+          distanceFormatted: this.geocodingService.formatDistance(distMeters),
+        };
+      })
+      .filter((v) => v.distanceKm <= radiusKm);
+
+    // 3. Sorting
+    if (query.sortBy === DiscoverySortBy.DISTANCE) {
+      venuesWithDistance.sort((a, b) => a.distanceMeters - b.distanceMeters);
+    } else if (query.sortBy === DiscoverySortBy.PRICE) {
+      venuesWithDistance.sort((a, b) => {
+        const minPriceA = Math.min(...a.facilities.map((f) => Number(f.pricingRules[0]?.basePrice || 0)));
+        const minPriceB = Math.min(...b.facilities.map((f) => Number(f.pricingRules[0]?.basePrice || 0)));
+        return minPriceA - minPriceB;
+      });
+    }
+
+    // 4. Pagination
+    const skip = query.skip ?? 0;
+    const limit = query.limit ?? 20;
+    const paginatedItems = venuesWithDistance.slice(skip, skip + limit);
+
+    return {
+      userCoordinates: { latitude: userLat, longitude: userLng },
+      radiusKm,
+      total: venuesWithDistance.length,
+      items: paginatedItems,
+    };
+  }
+
+  async geocodeVenueAddress(organizationId: string, venueId: string) {
+    const venue = await this.findOne(organizationId, venueId);
+    const geo = await this.geocodingService.geocodeAddress(venue.address, venue.city);
+
+    return this.prisma.venue.update({
+      where: { id: venueId },
+      data: {
+        latitude: geo.latitude,
+        longitude: geo.longitude,
+      },
+    });
+  }
+
+  async getVenuesMissingCoordinates() {
+    return this.prisma.venue.findMany({
+      where: {
+        status: VenueStatus.ACTIVE,
+        OR: [{ latitude: null }, { longitude: null }],
+      },
+      include: { business: { include: { organization: true } } },
+    });
+  }
+
+  async batchGeocodeVenues() {
+    const venues = await this.getVenuesMissingCoordinates();
+    let updatedCount = 0;
+
+    for (const v of venues) {
+      const geo = await this.geocodingService.geocodeAddress(v.address, v.city);
+      await this.prisma.venue.update({
+        where: { id: v.id },
+        data: { latitude: geo.latitude, longitude: geo.longitude },
+      });
+      updatedCount++;
+    }
+
+    return { total: venues.length, updatedCount };
   }
 
   async findAll(organizationId: string, filters: { businessId?: string; skip?: number; take?: number }) {
@@ -141,9 +292,25 @@ export class VenuesService {
   async update(organizationId: string, id: string, dto: UpdateVenueDto) {
     await this.findOne(organizationId, id);
 
+    let lat = dto.latitude;
+    let lng = dto.longitude;
+    if (lat === undefined && lng === undefined && (dto.address || dto.city)) {
+      const existing = await this.prisma.venue.findUnique({ where: { id } });
+      const geo = await this.geocodingService.geocodeAddress(
+        dto.address || existing.address,
+        dto.city || existing.city,
+      );
+      lat = geo.latitude;
+      lng = geo.longitude;
+    }
+
     return this.prisma.venue.update({
       where: { id },
-      data: dto,
+      data: {
+        ...dto,
+        ...(lat !== undefined ? { latitude: lat } : {}),
+        ...(lng !== undefined ? { longitude: lng } : {}),
+      },
     });
   }
 

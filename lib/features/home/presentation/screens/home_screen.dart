@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:playhub_playbooking/core/security/auth_provider.dart';
-import 'package:playhub_playbooking/core/security/permissions.dart';
+import 'package:playhub_playbooking/core/providers/location_provider.dart';
 import 'package:playhub_playbooking/features/home/presentation/providers/discovery_provider.dart';
 import 'package:playhub_playbooking/shared/components/empty_view.dart';
 import 'package:playhub_playbooking/shared/components/error_view.dart';
-import 'package:playhub_playbooking/shared/components/loading_indicator.dart';
+import 'package:playhub_playbooking/shared/components/location_picker_modal.dart';
 import 'package:playhub_playbooking/features/home/presentation/screens/match_discovery_screen.dart';
 import 'package:playhub_playbooking/features/home/presentation/screens/community_feed_screen.dart';
 import 'package:playhub_playbooking/features/profile/presentation/screens/profile_screen.dart';
@@ -105,50 +104,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 class _HomeContent extends ConsumerWidget {
   const _HomeContent();
 
-  void _showCityPicker(BuildContext context, WidgetRef ref) {
+  void _showLocationPicker(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
-        final citiesAsync = ref.watch(citiesProvider);
-        return Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Select City',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              citiesAsync.when(
-                data: (cities) => ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: cities.length,
-                  separatorBuilder: (c, i) => const Divider(),
-                  itemBuilder: (context, index) {
-                    final city = cities[index];
-                    return ListTile(
-                      leading: const Icon(Icons.location_city),
-                      title: Text(city.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      trailing: const Icon(Icons.check, size: 16),
-                      onTap: () {
-                        ref.read(selectedCityProvider.notifier).state = city;
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
-                ),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, _) => Center(child: Text('Error: $err')),
-              ),
-            ],
-          ),
-        );
-      },
+      builder: (context) => const LocationPickerModal(),
     );
   }
 
@@ -156,9 +119,9 @@ class _HomeContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final venuesAsync = ref.watch(discoverVenuesProvider);
+    final location = ref.watch(userLocationProvider);
+    final nearbyVenuesAsync = ref.watch(nearbyVenuesProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
-    final selectedCity = ref.watch(selectedCityProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -170,12 +133,18 @@ class _HomeContent extends ConsumerWidget {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
             ),
             GestureDetector(
-              onTap: () => _showCityPicker(context, ref),
+              onTap: () => _showLocationPicker(context),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Icon(
+                    location.isGps ? Icons.my_location : Icons.location_on,
+                    size: 13,
+                    color: colorScheme.primary,
+                  ),
+                  const SizedBox(width: 4),
                   Text(
-                    selectedCity?.name ?? 'Select City',
+                    '${location.locationName} • ${location.radiusKm.toInt()} km',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -194,6 +163,11 @@ class _HomeContent extends ConsumerWidget {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.map_outlined),
+            tooltip: 'Map View',
+            onPressed: () => context.push('/map'),
+          ),
+          IconButton(
             icon: const Icon(Icons.account_balance_wallet_outlined),
             tooltip: 'Wallet',
             onPressed: () => context.push('/wallet'),
@@ -207,7 +181,7 @@ class _HomeContent extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          ref.invalidate(discoverVenuesProvider);
+          ref.invalidate(nearbyVenuesProvider);
           ref.invalidate(categoriesProvider);
         },
         child: SingleChildScrollView(
@@ -216,19 +190,35 @@ class _HomeContent extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Search Bar
-              TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search venues, facilities, sports...',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+              // Search Bar + Map Button Row
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Search venues, sports, areas...',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        filled: true,
+                        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                      ),
+                      onTap: () => context.push('/search'),
+                      readOnly: true,
+                    ),
                   ),
-                  filled: true,
-                  fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-                ),
-                onTap: () => context.push('/search'),
-                readOnly: true,
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    onPressed: () => context.push('/map'),
+                    icon: const Icon(Icons.map),
+                    tooltip: 'Map Discovery',
+                    style: IconButton.styleFrom(
+                      padding: const EdgeInsets.all(14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
 
@@ -254,7 +244,7 @@ class _HomeContent extends ConsumerWidget {
                   _QuickAction(
                     icon: Icons.near_me_outlined,
                     label: 'Near Me',
-                    onTap: () => context.push('/search'),
+                    onTap: () => context.push('/map'),
                   ),
                 ],
               ),
@@ -309,31 +299,32 @@ class _HomeContent extends ConsumerWidget {
 
               const SizedBox(height: 24),
 
-              // Featured Venues Header
+              // Nearby Venues Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Popular Venues',
+                    'Nearby Venues (${location.radiusKm.toInt()} km)',
                     style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                   ),
-                  TextButton(
-                    onPressed: () => context.push('/search'),
-                    child: const Text('View All'),
+                  TextButton.icon(
+                    onPressed: () => context.push('/map'),
+                    icon: const Icon(Icons.map, size: 16),
+                    label: const Text('Map View'),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
 
-              venuesAsync.when(
+              nearbyVenuesAsync.when(
                 data: (venues) {
                   if (venues.isEmpty) {
                     return EmptyView(
                       icon: Icons.stadium_outlined,
-                      title: 'No venues found in this city',
-                      message: 'Try switching your selected city or search with different filters.',
-                      actionLabel: 'Switch City',
-                      onAction: () => _showCityPicker(context, ref),
+                      title: 'No venues within ${location.radiusKm.toInt()} km',
+                      message: 'Try increasing your search radius or changing your location.',
+                      actionLabel: 'Adjust Radius',
+                      onAction: () => _showLocationPicker(context),
                     );
                   }
 
@@ -353,28 +344,42 @@ class _HomeContent extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Venue Image Banner
-                              if (venue.imageUrls.isNotEmpty)
-                                Image.network(
-                                  venue.imageUrls.first,
-                                  height: 190,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) => Container(
-                                    height: 190,
+                              // Venue Image / Placeholder
+                              Stack(
+                                children: [
+                                  Container(
+                                    height: 140,
+                                    width: double.infinity,
                                     color: colorScheme.surfaceContainerHighest,
-                                    child: const Icon(Icons.image, size: 48, color: Colors.grey),
+                                    child: venue.imageUrls.isNotEmpty
+                                        ? Image.network(venue.imageUrls.first, fit: BoxFit.cover)
+                                        : Icon(Icons.stadium, size: 64, color: colorScheme.outlineVariant),
                                   ),
-                                )
-                              else
-                                Container(
-                                  height: 190,
-                                  color: colorScheme.surfaceContainerHighest,
-                                  child: Center(
-                                    child: Icon(Icons.stadium, size: 54, color: colorScheme.primary.withValues(alpha: 0.6)),
-                                  ),
-                                ),
-
+                                  if (venue.distanceFormatted != null)
+                                    Positioned(
+                                      top: 12,
+                                      right: 12,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black87,
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.navigation, color: Colors.white, size: 12),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              venue.distanceFormatted!,
+                                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                               Padding(
                                 padding: const EdgeInsets.all(14.0),
                                 child: Column(
@@ -386,60 +391,27 @@ class _HomeContent extends ConsumerWidget {
                                         Expanded(
                                           child: Text(
                                             venue.name,
-                                            style: const TextStyle(
-                                              fontSize: 17,
-                                              fontWeight: FontWeight.bold,
-                                            ),
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                            maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                         Row(
                                           children: [
                                             const Icon(Icons.star, size: 16, color: Colors.amber),
+                                            const SizedBox(width: 2),
                                             Text(
-                                              ' ${venue.rating.toStringAsFixed(1)} (${venue.reviewCount})',
+                                              venue.rating.toStringAsFixed(1),
                                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                                             ),
                                           ],
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.location_on_outlined, size: 15, color: colorScheme.onSurfaceVariant),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            venue.address,
-                                            style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 10),
-                                    // Price & Book CTA
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          'Starts from ₹500 / hr',
-                                          style: TextStyle(
-                                            color: colorScheme.primary,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        ElevatedButton(
-                                          onPressed: () => context.push('/venue/${venue.id}'),
-                                          style: ElevatedButton.styleFrom(
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                                          ),
-                                          child: const Text('Book Now'),
-                                        ),
-                                      ],
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${venue.address}, ${venue.city}',
+                                      style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
                                     ),
                                   ],
                                 ),
@@ -451,41 +423,32 @@ class _HomeContent extends ConsumerWidget {
                     },
                   );
                 },
-                loading: () => ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: 3,
-                  itemBuilder: (c, i) => const SkeletonCard(height: 250),
-                ),
+                loading: () => const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
                 error: (err, stack) => AppErrorView(
-                  message: 'Failed to load venues: $err',
-                  onRetry: () => ref.invalidate(discoverVenuesProvider),
+                  message: 'Error loading nearby venues: $err',
+                  onRetry: () => ref.refresh(nearbyVenuesProvider.future),
                 ),
               ),
             ],
           ),
         ),
       ),
-      floatingActionButton: ref.can(AppPermissions.venueCreate)
-          ? FloatingActionButton.extended(
-              onPressed: () => context.push('/business/venues/create'),
-              icon: const Icon(Icons.add_business),
-              label: const Text('New Venue'),
-            )
-          : null,
     );
   }
 
-  static IconData _getCategoryIcon(String slug) {
-    switch (slug.toLowerCase()) {
-      case 'cricket': return Icons.sports_cricket;
-      case 'football': return Icons.sports_soccer;
-      case 'badminton': return Icons.sports_tennis;
-      case 'tennis': return Icons.sports_tennis;
-      case 'swimming': return Icons.pool;
-      case 'gym':
-      case 'fitness': return Icons.fitness_center;
-      default: return Icons.sports;
+  IconData _getCategoryIcon(String slug) {
+    switch (slug) {
+      case 'sports':
+      case 'football':
+        return Icons.sports_soccer;
+      case 'cricket':
+        return Icons.sports_cricket;
+      case 'badminton':
+        return Icons.sports_tennis;
+      case 'swimming':
+        return Icons.pool;
+      default:
+        return Icons.sports;
     }
   }
 }
@@ -504,26 +467,29 @@ class _QuickAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
-      child: Padding(
-        padding: const EdgeInsets.all(4.0),
+      child: Container(
+        width: 72,
+        padding: const EdgeInsets.symmetric(vertical: 10),
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(16),
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: colorScheme.onPrimaryContainer, size: 24),
+              child: Icon(icon, color: colorScheme.primary, size: 22),
             ),
             const SizedBox(height: 6),
             Text(
               label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

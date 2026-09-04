@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/providers/repository_providers.dart';
 import '../../../../core/models/app_models.dart';
+import '../../../../core/providers/location_provider.dart';
 
 final citiesProvider = FutureProvider<List<City>>((ref) async {
   final repo = ref.watch(cityRepositoryProvider);
@@ -19,6 +20,19 @@ final discoverVenuesProvider = FutureProvider<List<Venue>>((ref) async {
   final selectedCity = ref.watch(selectedCityProvider);
   
   return repo.discoverVenues(
+    cityId: selectedCity?.id,
+  );
+});
+
+final nearbyVenuesProvider = FutureProvider.autoDispose<List<Venue>>((ref) async {
+  final repo = ref.watch(discoveryRepositoryProvider);
+  final location = ref.watch(userLocationProvider);
+  final selectedCity = ref.watch(selectedCityProvider);
+
+  return repo.getNearbyVenues(
+    latitude: location.latitude,
+    longitude: location.longitude,
+    radius: location.radiusKm,
     cityId: selectedCity?.id,
   );
 });

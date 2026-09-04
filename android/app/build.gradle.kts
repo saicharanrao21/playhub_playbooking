@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.playhub.app.playhub_playbooking"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 34
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

@@ -3,12 +3,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BusinessStatus, BookingStatus, KYCStatus, OrganizationStatus } from '@prisma/client';
 import { AuditService } from '../common/services/audit.service';
 import { ReviewPartnerDto } from './dto/review-partner.dto';
+import { VenuesService } from '../venues/venues.service';
 
 @Injectable()
 export class AdminService {
   constructor(
     private prisma: PrismaService,
     private auditService: AuditService,
+    private venuesService: VenuesService,
   ) {}
 
   async getDashboardStats() {
@@ -148,5 +150,13 @@ export class AdminService {
     ]);
 
     return { items, total };
+  }
+
+  async getVenuesMissingCoordinates() {
+    return this.venuesService.getVenuesMissingCoordinates();
+  }
+
+  async batchGeocodeVenues() {
+    return this.venuesService.batchGeocodeVenues();
   }
 }

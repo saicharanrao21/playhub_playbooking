@@ -64,6 +64,18 @@ export class AdminController {
     });
   }
 
+  @Get('venues/missing-coordinates')
+  @ApiOperation({ summary: 'List active venues missing lat/lng coordinates' })
+  getVenuesMissingCoordinates() {
+    return this.adminService.getVenuesMissingCoordinates();
+  }
+
+  @Post('venues/batch-geocode')
+  @ApiOperation({ summary: 'Batch auto-geocode all active venues missing coordinates' })
+  batchGeocodeVenues() {
+    return this.adminService.batchGeocodeVenues();
+  }
+
   @Post('businesses/:id/approve')
   @ApiOperation({ summary: 'Legacy: Approve a pending business' })
   approveBusiness(@Param('id') id: string) {

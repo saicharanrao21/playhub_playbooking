@@ -54,6 +54,10 @@ yarn-error.log*
 # OS Files
 .DS_Store
 Thumbs.db
+.android_home/
+.android_prefs/
+.user_home/
+.gradle_user_home/
 
 # Backend
 backend/node_modules/
