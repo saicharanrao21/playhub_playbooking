@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BusinessStatus, BookingStatus, KYCStatus, OrganizationStatus } from '@prisma/client';
 import { AuditService } from '../common/services/audit.service';
 import { ReviewPartnerDto } from './dto/review-partner.dto';
 import { VenuesService } from '../venues/venues.service';
+import { QueueService } from '../queues/queue.service';
 
 @Injectable()
 export class AdminService {
@@ -11,6 +12,7 @@ export class AdminService {
     private prisma: PrismaService,
     private auditService: AuditService,
     private venuesService: VenuesService,
+    @Optional() private queueService?: QueueService,
   ) {}
 
   async getDashboardStats() {
@@ -158,5 +160,16 @@ export class AdminService {
 
   async batchGeocodeVenues() {
     return this.venuesService.batchGeocodeVenues();
+  }
+
+  async getQueueHealth() {
+    if (!this.queueService) return [];
+    return this.queueService.getQueueHealth();
+  }
+
+  async retryFailedQueueJobs(queueName: string) {
+    if (!this.queueService) return { retried: 0 };
+    const count = await this.queueService.retryFailedJobs(queueName);
+    return { queueName, retried: count };
   }
 }

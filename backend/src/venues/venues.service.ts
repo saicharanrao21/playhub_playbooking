@@ -7,6 +7,7 @@ import { VenueStatus, FacilityStatus } from '@prisma/client';
 import { DiscoveryFiltersDto } from '../discovery/dto/discovery-filters.dto';
 import { NearbyVenuesQueryDto, DiscoverySortBy } from '../discovery/dto/nearby-venues-query.dto';
 import { GeocodingService } from '../common/services/geocoding.service';
+import { CacheService } from '../redis/cache.service';
 
 @Injectable()
 export class VenuesService {
@@ -15,6 +16,7 @@ export class VenuesService {
   constructor(
     private prisma: PrismaService,
     private geocodingService: GeocodingService,
+    private cacheService: CacheService,
   ) {}
 
   async create(organizationId: string, businessId: string, dto: CreateVenueDto) {
@@ -50,7 +52,7 @@ export class VenuesService {
       lng = geo.longitude;
     }
 
-    return this.prisma.venue.create({
+    const created = await this.prisma.venue.create({
       data: {
         ...dto,
         latitude: lat,
@@ -58,6 +60,9 @@ export class VenuesService {
         businessId,
       },
     });
+
+    this.cacheService.delPattern('venues:*').catch(() => {});
+    return created;
   }
 
   async discover(filters: DiscoveryFiltersDto) {
@@ -107,101 +112,107 @@ export class VenuesService {
   }
 
   /**
-   * High-performance radius search using bounding-box index filtering + exact Haversine calculation.
+   * High-performance radius search using bounding-box index filtering + exact Haversine calculation with Redis caching.
    */
   async findNearby(query: NearbyVenuesQueryDto) {
-    // Default coordinates (e.g. Hyderabad center) if lat/lng not provided
     const userLat = query.latitude ?? 17.4401;
     const userLng = query.longitude ?? 78.3489;
     const radiusKm = query.radius ?? 10.0;
+    const cacheKey = `venues:nearby:${userLat.toFixed(3)}_${userLng.toFixed(3)}:${radiusKm}:${query.query || 'all'}:${query.cityId || 'all'}:${query.categoryId || 'all'}:${query.sortBy || 'dist'}:${query.skip || 0}:${query.limit || 20}`;
 
-    // 1. Calculate Bounding Box for PostgreSQL Index Usage
-    const box = this.geocodingService.getBoundingBox(userLat, userLng, radiusKm);
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        // 1. Calculate Bounding Box for PostgreSQL Index Usage
+        const box = this.geocodingService.getBoundingBox(userLat, userLng, radiusKm);
 
-    const where: any = {
-      status: VenueStatus.ACTIVE,
-      latitude: { gte: box.minLat, lte: box.maxLat },
-      longitude: { gte: box.minLng, lte: box.maxLng },
-      ...(query.cityId ? { cityId: query.cityId } : {}),
-      ...(query.query
-        ? {
-            OR: [
-              { name: { contains: query.query, mode: 'insensitive' as const } },
-              { description: { contains: query.query, mode: 'insensitive' as const } },
-              { address: { contains: query.query, mode: 'insensitive' as const } },
-              { city: { contains: query.query, mode: 'insensitive' as const } },
-            ],
-          }
-        : {}),
-      ...(query.categoryId || query.activityId
-        ? {
+        const where: any = {
+          status: VenueStatus.ACTIVE,
+          latitude: { gte: box.minLat, lte: box.maxLat },
+          longitude: { gte: box.minLng, lte: box.maxLng },
+          ...(query.cityId ? { cityId: query.cityId } : {}),
+          ...(query.query
+            ? {
+                OR: [
+                  { name: { contains: query.query, mode: 'insensitive' as const } },
+                  { description: { contains: query.query, mode: 'insensitive' as const } },
+                  { address: { contains: query.query, mode: 'insensitive' as const } },
+                  { city: { contains: query.query, mode: 'insensitive' as const } },
+                ],
+              }
+            : {}),
+          ...(query.categoryId || query.activityId
+            ? {
+                facilities: {
+                  some: {
+                    status: FacilityStatus.ACTIVE,
+                    ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+                    ...(query.activityId ? { activityId: query.activityId } : {}),
+                  },
+                },
+              }
+            : {}),
+        };
+
+        // Fetch candidate venues matching bounding box index
+        const candidates = await this.prisma.venue.findMany({
+          where,
+          include: {
             facilities: {
-              some: {
-                status: FacilityStatus.ACTIVE,
-                ...(query.categoryId ? { categoryId: query.categoryId } : {}),
-                ...(query.activityId ? { activityId: query.activityId } : {}),
-              },
+              where: { status: FacilityStatus.ACTIVE },
+              include: { category: true, activity: true, media: true, pricingRules: { where: { isActive: true } } },
             },
-          }
-        : {}),
-    };
+            cityRel: true,
+            media: true,
+          },
+        });
 
-    // Fetch candidate venues matching bounding box index
-    const candidates = await this.prisma.venue.findMany({
-      where,
-      include: {
-        facilities: {
-          where: { status: FacilityStatus.ACTIVE },
-          include: { category: true, activity: true, media: true, pricingRules: { where: { isActive: true } } },
-        },
-        cityRel: true,
-        media: true,
-      },
-    });
+        // 2. Exact Haversine Distance Calculation & Radius Filtering
+        const venuesWithDistance = candidates
+          .map((v) => {
+            const vLat = v.latitude!;
+            const vLng = v.longitude!;
+            const distMeters = this.geocodingService.calculateDistanceMeters(userLat, userLng, vLat, vLng);
+            const distKm = distMeters / 1000.0;
 
-    // 2. Exact Haversine Distance Calculation & Radius Filtering
-    const venuesWithDistance = candidates
-      .map((v) => {
-        const vLat = v.latitude!;
-        const vLng = v.longitude!;
-        const distMeters = this.geocodingService.calculateDistanceMeters(userLat, userLng, vLat, vLng);
-        const distKm = distMeters / 1000.0;
+            return {
+              ...v,
+              distanceMeters: distMeters,
+              distanceKm: distKm,
+              distanceFormatted: this.geocodingService.formatDistance(distMeters),
+            };
+          })
+          .filter((v) => v.distanceKm <= radiusKm);
+
+        // 3. Sorting
+        if (query.sortBy === DiscoverySortBy.DISTANCE) {
+          venuesWithDistance.sort((a, b) => a.distanceMeters - b.distanceMeters);
+        } else if (query.sortBy === DiscoverySortBy.PRICE) {
+          const getMinPrice = (v: typeof venuesWithDistance[0]) => {
+            const prices = v.facilities.flatMap((f) =>
+              f.pricingRules.map((pr) => Number(pr.basePrice)),
+            );
+            return prices.length > 0 ? Math.min(...prices) : 0;
+          };
+          venuesWithDistance.sort((a, b) => getMinPrice(a) - getMinPrice(b));
+        } else if (query.sortBy === DiscoverySortBy.RATING || query.sortBy === DiscoverySortBy.POPULARITY) {
+          venuesWithDistance.sort((a, b) => ((b as any).rating || 0) - ((a as any).rating || 0));
+        }
+
+        // 4. Pagination
+        const skip = query.skip ?? 0;
+        const limit = query.limit ?? 20;
+        const paginatedItems = venuesWithDistance.slice(skip, skip + limit);
 
         return {
-          ...v,
-          distanceMeters: distMeters,
-          distanceKm: distKm,
-          distanceFormatted: this.geocodingService.formatDistance(distMeters),
+          userCoordinates: { latitude: userLat, longitude: userLng },
+          radiusKm,
+          total: venuesWithDistance.length,
+          items: paginatedItems,
         };
-      })
-      .filter((v) => v.distanceKm <= radiusKm);
-
-    // 3. Sorting
-    if (query.sortBy === DiscoverySortBy.DISTANCE) {
-      venuesWithDistance.sort((a, b) => a.distanceMeters - b.distanceMeters);
-    } else if (query.sortBy === DiscoverySortBy.PRICE) {
-      const getMinPrice = (v: typeof venuesWithDistance[0]) => {
-        const prices = v.facilities.flatMap((f) =>
-          f.pricingRules.map((pr) => Number(pr.basePrice)),
-        );
-        return prices.length > 0 ? Math.min(...prices) : 0;
-      };
-      venuesWithDistance.sort((a, b) => getMinPrice(a) - getMinPrice(b));
-    } else if (query.sortBy === DiscoverySortBy.RATING || query.sortBy === DiscoverySortBy.POPULARITY) {
-      venuesWithDistance.sort((a, b) => ((b as any).rating || 0) - ((a as any).rating || 0));
-    }
-
-    // 4. Pagination
-    const skip = query.skip ?? 0;
-    const limit = query.limit ?? 20;
-    const paginatedItems = venuesWithDistance.slice(skip, skip + limit);
-
-    return {
-      userCoordinates: { latitude: userLat, longitude: userLng },
-      radiusKm,
-      total: venuesWithDistance.length,
-      items: paginatedItems,
-    };
+      },
+      300, // 5 min TTL
+    );
   }
 
   async geocodeVenueAddress(organizationId: string, venueId: string) {
@@ -308,7 +319,7 @@ export class VenuesService {
       lng = geo.longitude;
     }
 
-    return this.prisma.venue.update({
+    const updated = await this.prisma.venue.update({
       where: { id },
       data: {
         ...dto,
@@ -316,6 +327,9 @@ export class VenuesService {
         ...(lng !== undefined ? { longitude: lng } : {}),
       },
     });
+
+    this.cacheService.delPattern('venues:*').catch(() => {});
+    return updated;
   }
 
   async updateOperatingHours(organizationId: string, venueId: string, hours: OperatingHoursDto[]) {

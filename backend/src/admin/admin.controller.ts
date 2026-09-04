@@ -64,6 +64,18 @@ export class AdminController {
     });
   }
 
+  @Get('queues/health')
+  @ApiOperation({ summary: 'Get platform queue health, worker status & job metrics' })
+  getQueueHealth() {
+    return this.adminService.getQueueHealth();
+  }
+
+  @Post('queues/:queueName/retry-failed')
+  @ApiOperation({ summary: 'Retry failed jobs in a queue' })
+  retryFailedQueueJobs(@Param('queueName') queueName: string) {
+    return this.adminService.retryFailedQueueJobs(queueName);
+  }
+
   @Get('venues/missing-coordinates')
   @ApiOperation({ summary: 'List active venues missing lat/lng coordinates' })
   getVenuesMissingCoordinates() {

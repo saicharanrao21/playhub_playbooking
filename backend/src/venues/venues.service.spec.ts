@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { VenuesService } from './venues.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { GeocodingService } from '../common/services/geocoding.service';
+import { CacheService } from '../redis/cache.service';
 import { ForbiddenException, ConflictException, NotFoundException } from '@nestjs/common';
 import { NearbyVenuesQueryDto } from '../discovery/dto/nearby-venues-query.dto';
 
@@ -11,7 +12,15 @@ describe('VenuesService (Domain Isolation)', () => {
 
   const mockPrisma = {
     business: { findFirst: jest.fn() },
-    venue: { findUnique: jest.fn(), create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), count: jest.fn() },
+    venue: { findUnique: jest.fn(), create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), count: jest.fn(), update: jest.fn() },
+  };
+
+  const mockCacheService = {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(true),
+    del: jest.fn().mockResolvedValue(true),
+    delPattern: jest.fn().mockResolvedValue(1),
+    getOrSet: jest.fn((key, fetcher) => fetcher()),
   };
 
   beforeEach(async () => {
@@ -20,6 +29,7 @@ describe('VenuesService (Domain Isolation)', () => {
         VenuesService,
         GeocodingService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: CacheService, useValue: mockCacheService },
       ],
     }).compile();
 
