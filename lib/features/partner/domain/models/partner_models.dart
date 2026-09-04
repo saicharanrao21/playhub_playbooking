@@ -536,6 +536,75 @@ class CreatePricingRuleRequest {
 }
 
 @immutable
+class PartnerFinanceSummary {
+  final double availableBalance;
+  final double grossEarnings;
+  final double totalCommission;
+  final double totalPaidOut;
+  final int settlementsCount;
+  final int totalTransactions;
+  final String currency;
+
+  const PartnerFinanceSummary({
+    required this.availableBalance,
+    this.grossEarnings = 0.0,
+    this.totalCommission = 0.0,
+    this.totalPaidOut = 0.0,
+    this.settlementsCount = 0,
+    this.totalTransactions = 0,
+    this.currency = 'INR',
+  });
+
+  factory PartnerFinanceSummary.fromJson(Map<String, dynamic> json) {
+    return PartnerFinanceSummary(
+      availableBalance: (json['availableBalance'] as num?)?.toDouble() ?? 0.0,
+      grossEarnings: (json['grossEarnings'] as num?)?.toDouble() ?? 0.0,
+      totalCommission: (json['totalCommission'] as num?)?.toDouble() ?? 0.0,
+      totalPaidOut: (json['totalPaidOut'] as num?)?.toDouble() ?? 0.0,
+      settlementsCount: json['settlementsCount'] as int? ?? 0,
+      totalTransactions: json['totalTransactions'] as int? ?? 0,
+      currency: json['currency'] ?? 'INR',
+    );
+  }
+}
+
+@immutable
+class PartnerPayoutItem {
+  final String id;
+  final String organizationId;
+  final double amount;
+  final String currency;
+  final String status;
+  final String? providerReference;
+  final String? failureReason;
+  final DateTime createdAt;
+
+  const PartnerPayoutItem({
+    required this.id,
+    required this.organizationId,
+    required this.amount,
+    required this.currency,
+    required this.status,
+    this.providerReference,
+    this.failureReason,
+    required this.createdAt,
+  });
+
+  factory PartnerPayoutItem.fromJson(Map<String, dynamic> json) {
+    return PartnerPayoutItem(
+      id: json['id'] ?? '',
+      organizationId: json['organizationId'] ?? '',
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      currency: json['currency'] ?? 'INR',
+      status: json['status'] ?? 'PENDING',
+      providerReference: json['providerReference'],
+      failureReason: json['failureReason'],
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
+    );
+  }
+}
+
+@immutable
 class PartnerFinanceBalance {
   final double availableBalance;
   final String currency;

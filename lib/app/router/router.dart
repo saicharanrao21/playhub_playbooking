@@ -45,6 +45,11 @@ import '../../features/admin_dashboard/presentation/screens/user_management_scre
 import '../../features/admin_dashboard/presentation/screens/admin_partner_queue_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/admin_partner_details_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/admin_audit_log_screen.dart';
+import '../../features/admin_dashboard/presentation/screens/admin_finance_dashboard_screen.dart';
+import '../../features/admin_dashboard/presentation/screens/admin_reconciliation_screen.dart';
+import '../../features/admin_dashboard/presentation/screens/admin_commission_config_screen.dart';
+import '../../features/admin_dashboard/presentation/screens/admin_financial_adjustments_screen.dart';
+import '../../features/admin_dashboard/presentation/screens/admin_settlements_payouts_screen.dart';
 import '../../features/partner/presentation/screens/partner_entry_screen.dart';
 import '../../features/partner/presentation/screens/partner_onboarding_screen.dart';
 import '../../features/partner/presentation/screens/partner_shell_screen.dart';
@@ -372,6 +377,33 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'audit',
             name: 'admin_audit',
             builder: (context, state) => const AdminAuditLogScreen(),
+          ),
+          GoRoute(
+            path: 'finance',
+            name: 'admin_finance_dashboard',
+            builder: (context, state) => const AdminFinanceDashboardScreen(),
+            routes: [
+              GoRoute(
+                path: 'reconciliation',
+                name: 'admin_reconciliation',
+                builder: (context, state) => const AdminReconciliationScreen(),
+              ),
+              GoRoute(
+                path: 'commissions',
+                name: 'admin_commissions',
+                builder: (context, state) => const AdminCommissionConfigScreen(),
+              ),
+              GoRoute(
+                path: 'adjustments',
+                name: 'admin_adjustments',
+                builder: (context, state) => const AdminFinancialAdjustmentsScreen(),
+              ),
+              GoRoute(
+                path: 'settlements',
+                name: 'admin_settlements',
+                builder: (context, state) => const AdminSettlementsPayoutsScreen(),
+              ),
+            ],
           ),
         ],
       ),

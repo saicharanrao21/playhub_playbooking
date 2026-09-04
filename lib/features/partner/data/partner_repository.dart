@@ -42,7 +42,10 @@ abstract class IPartnerRepository {
 
   // Finance
   Future<PartnerFinanceBalance> getBalance(String organizationId);
+  Future<PartnerFinanceSummary> getFinancialSummary(String organizationId);
   Future<List<FinancialTransaction>> getFinanceTransactions(String organizationId);
+  Future<List<PartnerPayoutItem>> getPayouts(String organizationId);
+  Future<bool> requestPayout(String organizationId, double amount, {String? settlementId});
 
   // Pricing Rules
   Future<List<PricingRule>> getPricingRules(String organizationId, String facilityId);
@@ -596,6 +599,18 @@ class PartnerRepositoryImpl implements IPartnerRepository {
   }
 
   @override
+  Future<PartnerFinanceSummary> getFinancialSummary(String organizationId) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      '/organizations/$organizationId/finance/summary',
+      headers: {'x-organization-id': organizationId},
+    );
+    if (response.isSuccess && response.data != null) {
+      return PartnerFinanceSummary.fromJson(response.data!);
+    }
+    return const PartnerFinanceSummary(availableBalance: 0, currency: 'INR');
+  }
+
+  @override
   Future<List<FinancialTransaction>> getFinanceTransactions(String organizationId) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       '/organizations/$organizationId/finance/transactions',
@@ -606,5 +621,30 @@ class PartnerRepositoryImpl implements IPartnerRepository {
       return items.map((i) => FinancialTransaction.fromJson(i as Map<String, dynamic>)).toList();
     }
     return [];
+  }
+
+  @override
+  Future<List<PartnerPayoutItem>> getPayouts(String organizationId) async {
+    final response = await _apiClient.get<List<dynamic>>(
+      '/organizations/$organizationId/finance/payouts',
+      headers: {'x-organization-id': organizationId},
+    );
+    if (response.isSuccess && response.data != null) {
+      return response.data!.map((i) => PartnerPayoutItem.fromJson(i as Map<String, dynamic>)).toList();
+    }
+    return [];
+  }
+
+  @override
+  Future<bool> requestPayout(String organizationId, double amount, {String? settlementId}) async {
+    final response = await _apiClient.post(
+      '/organizations/$organizationId/finance/payouts/request',
+      data: {
+        'amount': amount,
+        'settlementId': settlementId,
+      },
+      headers: {'x-organization-id': organizationId},
+    );
+    return response.isSuccess;
   }
 }

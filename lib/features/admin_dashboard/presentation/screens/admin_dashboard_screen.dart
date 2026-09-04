@@ -158,6 +158,17 @@ class AdminDashboardScreen extends ConsumerWidget {
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => context.push('/admin-dashboard/partners'),
                       ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: Icon(Icons.account_balance, color: colorScheme.primary),
+                        ),
+                        title: const Text('Financial Governance & Audits', style: TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: const Text('Platform ledger, reconciliation, commissions & payouts'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/admin-dashboard/finance'),
+                      ),
                     ],
                   ),
                 ),

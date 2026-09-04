@@ -21,9 +21,24 @@ export class FinanceEventsListener {
         userId: payload.userId,
       });
     } catch (e) {
-      this.logger.error(`Failed to record financial event: ${e.message}`, e.stack);
+      this.logger.error(`Failed to record financial event for payment: ${e.message}`, e.stack);
     }
   }
 
-  // TODO: Add handlePaymentRefunded in this phase or next
+  @OnEvent(Events.PAYMENT_REFUNDED)
+  async handlePaymentRefunded(payload: any) {
+    this.logger.log(`Recording financial refund event for payment: ${payload.paymentId}`);
+    try {
+      await this.financeService.recordRefund({
+        paymentId: payload.paymentId,
+        bookingId: payload.bookingId,
+        organizationId: payload.organizationId,
+        amount: payload.amount,
+        reason: payload.reason,
+        userId: payload.userId,
+      });
+    } catch (e) {
+      this.logger.error(`Failed to record financial event for refund: ${e.message}`, e.stack);
+    }
+  }
 }
