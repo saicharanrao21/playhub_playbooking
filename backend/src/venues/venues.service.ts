@@ -180,11 +180,15 @@ export class VenuesService {
     if (query.sortBy === DiscoverySortBy.DISTANCE) {
       venuesWithDistance.sort((a, b) => a.distanceMeters - b.distanceMeters);
     } else if (query.sortBy === DiscoverySortBy.PRICE) {
-      venuesWithDistance.sort((a, b) => {
-        const minPriceA = Math.min(...a.facilities.map((f) => Number(f.pricingRules[0]?.basePrice || 0)));
-        const minPriceB = Math.min(...b.facilities.map((f) => Number(f.pricingRules[0]?.basePrice || 0)));
-        return minPriceA - minPriceB;
-      });
+      const getMinPrice = (v: typeof venuesWithDistance[0]) => {
+        const prices = v.facilities.flatMap((f) =>
+          f.pricingRules.map((pr) => Number(pr.basePrice)),
+        );
+        return prices.length > 0 ? Math.min(...prices) : 0;
+      };
+      venuesWithDistance.sort((a, b) => getMinPrice(a) - getMinPrice(b));
+    } else if (query.sortBy === DiscoverySortBy.RATING || query.sortBy === DiscoverySortBy.POPULARITY) {
+      venuesWithDistance.sort((a, b) => ((b as any).rating || 0) - ((a as any).rating || 0));
     }
 
     // 4. Pagination

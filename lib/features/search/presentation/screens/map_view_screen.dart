@@ -4,7 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:go_router/go_router.dart';
 import 'package:playhub_playbooking/core/providers/location_provider.dart';
-import 'package:playhub_playbooking/features/home/presentation/providers/discovery_provider.dart';
+import 'package:playhub_playbooking/features/search/presentation/providers/search_provider.dart';
 import 'package:playhub_playbooking/core/models/app_models.dart';
 
 class MapViewScreen extends ConsumerStatefulWidget {
@@ -27,7 +27,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   @override
   Widget build(BuildContext context) {
     final location = ref.watch(userLocationProvider);
-    final nearbyVenuesAsync = ref.watch(nearbyVenuesProvider);
+    final searchResultsAsync = ref.watch(searchResultsProvider);
+    final searchState = ref.watch(searchStateProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -40,7 +41,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
           children: [
             const Text('Map View Discovery', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             Text(
-              'Near ${location.locationName} (${location.radiusKm.toInt()} km radius)',
+              'Near ${location.locationName} (${searchState.radiusKm.toInt()} km radius)',
               style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
             ),
           ],
@@ -57,15 +58,15 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       ),
       body: Stack(
         children: [
-          nearbyVenuesAsync.when(
+          searchResultsAsync.when(
             data: (venues) {
               final markers = <Marker>[];
 
-              // 1. User Location Marker (Blue Dot)
+              // 1. User Location Marker (Blue Pulsing Indicator)
               markers.add(
                 Marker(
                   point: userCenter,
-                  width: 40,
+                  width: 44,
                   height: 40,
                   child: Container(
                     decoration: BoxDecoration(
@@ -112,7 +113,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.2),
+                                color: Colors.black.withValues(alpha: 0.25),
                                 blurRadius: 6,
                                 offset: const Offset(0, 3),
                               ),
@@ -149,10 +150,10 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, _) => Center(child: Text('Error loading map: $err')),
+            error: (err, stack) => Center(child: Text('Error loading map venues: $err')),
           ),
 
-          // Bottom Venue Preview Card
+          // Selected Venue Preview Card
           if (_selectedVenue != null)
             Positioned(
               left: 16,
