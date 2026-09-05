@@ -44,7 +44,7 @@
 ## TIER 5 — PRODUCTION READINESS & ENTERPRISE SCALING (ROADMAP)
 - **Phase 64: Production Multi-Region Observability, Structured Tracing & APM** ✅ (OpenTelemetry W3C tracecontext, AsyncLocalStorage trace propagation, Prometheus `/metrics`, StructuredLogger JSON, normalized route metrics)
 - **Phase 65: Object Storage (S3/R2) & Edge CDN Media Pipeline** ✅ (Provider-agnostic S3/R2 presigned upload URLs, headObject completion validation, private KYC download URLs, CDN delivery, MediaWorker thumbnail queue)
-- **Phase 66: Memberships, Coupons & Referral Loyalty Engine** (Promo code validation, percentage/fixed discounts, referral reward accounting)
+- **Phase 66: Memberships, Coupons & Referral Loyalty Engine** ✅ (Membership plans & active subscriptions, coupon validation pipeline, referral code attribution, self-referral blocks, double-entry loyalty points ledger, Customer Flutter UX)
 - **Phase 67: Real-Time WebSockets & In-App Match Chat** (NestJS WebSocket gateway, match group chat, court arrival notifications)
 - **Phase 68: Search Intelligence & Recommendation Engine** (User preference vectoring, venue ranking algorithms, re-booking recommendations)
 - **Phase 69: Advanced Support, Disputes & Resolution** (Customer support ticketing, refund dispute mediation workflow, goodwill credits)

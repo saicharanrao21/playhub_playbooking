@@ -39,6 +39,10 @@ import '../../features/tournaments/presentation/screens/tournament_details_scree
 import '../../features/home/presentation/screens/match_details_screen.dart';
 import '../../features/profile/presentation/screens/account_security_screen.dart';
 import '../../features/profile/presentation/screens/help_support_screen.dart';
+import '../../features/profile/presentation/screens/memberships_screen.dart';
+import '../../features/profile/presentation/screens/coupons_screen.dart';
+import '../../features/profile/presentation/screens/referral_screen.dart';
+import '../../features/profile/presentation/screens/loyalty_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/city_management_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/category_management_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/activity_management_screen.dart';
@@ -204,6 +208,26 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'help',
             name: 'help_support',
             builder: (context, state) => const HelpSupportScreen(),
+          ),
+          GoRoute(
+            path: 'memberships',
+            name: 'memberships',
+            builder: (context, state) => const MembershipsScreen(),
+          ),
+          GoRoute(
+            path: 'coupons',
+            name: 'coupons',
+            builder: (context, state) => const CouponsScreen(),
+          ),
+          GoRoute(
+            path: 'referral',
+            name: 'referral',
+            builder: (context, state) => const ReferralScreen(),
+          ),
+          GoRoute(
+            path: 'loyalty',
+            name: 'loyalty',
+            builder: (context, state) => const LoyaltyScreen(),
           ),
         ],
       ),

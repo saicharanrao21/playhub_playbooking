@@ -176,6 +176,13 @@ model User {
   staffCheckIns            CheckIn[]               @relation("StaffCheckIns")
   userCheckIns             CheckIn[]
   createdFinancialTransactions FinancialTransaction[] @relation("CreatedTransactions")
+  customerMemberships      CustomerMembership[]
+  couponRedemptions        CouponRedemption[]
+  referralCode             ReferralCode?
+  sentReferrals            Referral[]              @relation("Referrer")
+  receivedReferral         Referral?               @relation("Referee")
+  loyaltyAccount           LoyaltyAccount?
+  loyaltyTransactions      LoyaltyTransaction[]
 
   @@map("users")
 }
@@ -209,6 +216,9 @@ model Organization {
   payouts               Payout[]
   commissionConfigs     CommissionConfig[]
   auditLogs             AuditLog[]
+  membershipPlans       MembershipPlan[]
+  customerMemberships   CustomerMembership[]
+  coupons               Coupon[]
 
   @@map("organizations")
 }
@@ -412,6 +422,7 @@ model Booking {
   notifications Notification[]
   checkIn       CheckIn?
   financialTransactions FinancialTransaction[]
+  couponRedemptions CouponRedemption[]
 
   @@index([organizationId])
   @@index([facilityId])
@@ -853,4 +864,185 @@ model CommissionConfig {
 
   @@index([organizationId, isActive])
   @@map("commission_configs")
+}
+
+model MembershipPlan {
+  id             String   @id @default(uuid())
+  organizationId String?  // Null for platform-wide plans
+  name           String
+  description    String?
+  code           String   @unique
+  status         String   @default("ACTIVE") // DRAFT, ACTIVE, PAUSED, ARCHIVED
+  price          Decimal  @db.Decimal(12, 2)
+  currency       String   @default("INR")
+  duration       Int      @default(1)
+  durationUnit   String   @default("MONTHS") // DAYS, MONTHS, YEARS
+  benefits       Json?    // Array of benefit rules
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  customerMemberships CustomerMembership[]
+
+  @@index([organizationId, status])
+  @@map("membership_plans")
+}
+
+model CustomerMembership {
+  id             String   @id @default(uuid())
+  userId         String
+  organizationId String?
+  planId         String
+  paymentId      String?
+  startDate      DateTime @default(now())
+  expiryDate     DateTime
+  status         String   @default("ACTIVE") // ACTIVE, EXPIRING, EXPIRED, CANCELLED, SUSPENDED
+  amountPaid     Decimal  @db.Decimal(12, 2)
+  currency       String   @default("INR")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user         User            @relation(fields: [userId], references: [id])
+  organization Organization?   @relation(fields: [organizationId], references: [id])
+  plan         MembershipPlan  @relation(fields: [planId], references: [id])
+
+  @@index([userId, status])
+  @@index([organizationId])
+  @@index([expiryDate])
+  @@map("customer_memberships")
+}
+
+model Coupon {
+  id                     String    @id @default(uuid())
+  organizationId         String?   // Null for global coupons
+  code                   String    @unique
+  description            String?
+  discountType           String    @default("PERCENTAGE") // PERCENTAGE, FIXED
+  discountValue          Decimal   @db.Decimal(12, 2)
+  minBookingAmount       Decimal   @default(0) @db.Decimal(12, 2)
+  maxDiscountAmount      Decimal?  @db.Decimal(12, 2)
+  validFrom              DateTime?
+  validTo                DateTime?
+  totalRedemptionLimit   Int?
+  perUserRedemptionLimit Int       @default(1)
+  firstBookingOnly       Boolean   @default(false)
+  membershipRequired     Boolean   @default(false)
+  venueId                String?
+  facilityId             String?
+  isActive               Boolean   @default(true)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  organization      Organization?      @relation(fields: [organizationId], references: [id])
+  couponRedemptions CouponRedemption[]
+
+  @@index([organizationId, isActive])
+  @@index([code])
+  @@map("coupons")
+}
+
+model CouponRedemption {
+  id             String   @id @default(uuid())
+  couponId       String
+  userId         String
+  organizationId String?
+  bookingId      String?
+  discountAmount Decimal  @db.Decimal(12, 2)
+  status         String   @default("CONFIRMED") // RESERVED, CONFIRMED, CANCELLED
+  createdAt      DateTime @default(now())
+
+  coupon       Coupon        @relation(fields: [couponId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+  booking      Booking?      @relation(fields: [bookingId], references: [id])
+
+  @@index([couponId, userId])
+  @@index([userId])
+  @@index([bookingId])
+  @@map("coupon_redemptions")
+}
+
+model ReferralCode {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  code      String   @unique
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([code])
+  @@map("referral_codes")
+}
+
+model ReferralCampaign {
+  id                  String   @id @default(uuid())
+  name                String
+  isActive            Boolean  @default(true)
+  referrerRewardType  String   @default("LOYALTY_POINTS") // LOYALTY_POINTS, FIXED_CREDIT, COUPON
+  referrerRewardValue Decimal  @db.Decimal(12, 2)
+  refereeRewardType   String   @default("COUPON")
+  refereeRewardValue  Decimal  @db.Decimal(12, 2)
+  minQualifyingAmount Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  referrals Referral[]
+
+  @@map("referral_campaigns")
+}
+
+model Referral {
+  id                  String   @id @default(uuid())
+  campaignId          String?
+  referrerId          String
+  refereeId          String   @unique
+  status              String   @default("PENDING") // PENDING, QUALIFIED, REWARDED, EXPIRED
+  qualifyingBookingId String?
+  qualifiedAt         DateTime?
+  createdAt           DateTime @default(now())
+
+  referrer User              @relation("Referrer", fields: [referrerId], references: [id])
+  referee  User              @relation("Referee", fields: [refereeId], references: [id])
+  campaign ReferralCampaign? @relation(fields: [campaignId], references: [id])
+
+  @@index([referrerId])
+  @@index([refereeId])
+  @@index([status])
+  @@map("referrals")
+}
+
+model LoyaltyAccount {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  pointsBalance  Int      @default(0)
+  lifetimeEarned Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+  transactions LoyaltyTransaction[]
+
+  @@map("loyalty_accounts")
+}
+
+model LoyaltyTransaction {
+  id             String    @id @default(uuid())
+  accountId      String
+  userId         String
+  type           String    // EARN, REDEEM, BONUS, REFERRAL, EXPIRY, REVERSAL, ADMIN_ADJUSTMENT
+  points         Int
+  balanceAfter   Int
+  referenceType  String?   // BOOKING, REFERRAL, ADMIN
+  referenceId    String?
+  idempotencyKey String?   @unique
+  expiresAt      DateTime?
+  metadata       Json?
+  createdAt      DateTime  @default(now())
+
+  account LoyaltyAccount @relation(fields: [accountId], references: [id])
+  user    User           @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+  @@index([expiresAt])
+  @@map("loyalty_transactions")
 }

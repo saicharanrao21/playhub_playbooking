@@ -26,6 +26,9 @@ import { RedisModule } from './redis/redis.module';
 import { QueueModule } from './queues/queue.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { ObservabilityModule } from './observability/observability.module';
+import { PromotionsModule } from './promotions/promotions.module';
+import { MembershipsModule } from './memberships/memberships.module';
+import { LoyaltyModule } from './loyalty/loyalty.module';
 import { MetricsMiddleware } from './observability/metrics.middleware';
 import { HealthController } from './health/health.controller';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
@@ -73,6 +76,9 @@ import { validate } from './common/config/env.validation';
     QueueModule,
     WebhooksModule,
     ObservabilityModule,
+    PromotionsModule,
+    MembershipsModule,
+    LoyaltyModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -173,7 +173,50 @@ class ProfileScreen extends ConsumerWidget {
 
           const SizedBox(height: 16),
 
-          // Section 2: Partner & Venue Management
+          // Section 2: Rewards, Offers & Memberships
+          _buildSectionHeader(context, 'Rewards, Offers & Memberships'),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Column(
+              children: [
+                _buildMenuItem(
+                  context,
+                  Icons.card_membership_outlined,
+                  'PlayHub Memberships',
+                  'View active membership, plan perks & benefits',
+                  () => context.push('/profile/memberships'),
+                ),
+                const Divider(height: 1),
+                _buildMenuItem(
+                  context,
+                  Icons.local_offer_outlined,
+                  'Offers & Promo Coupons',
+                  'Claim court discounts & view available promo codes',
+                  () => context.push('/profile/coupons'),
+                ),
+                const Divider(height: 1),
+                _buildMenuItem(
+                  context,
+                  Icons.card_giftcard_outlined,
+                  'Refer & Earn',
+                  'Invite friends and earn ₹100 in PlayHub loyalty points',
+                  () => context.push('/profile/referral'),
+                ),
+                const Divider(height: 1),
+                _buildMenuItem(
+                  context,
+                  Icons.stars_outlined,
+                  'Loyalty Points Ledger',
+                  'View earned points balance and redemption history',
+                  () => context.push('/profile/loyalty'),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Section 3: Partner & Venue Management
           _buildSectionHeader(context, 'Partner & Management'),
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
