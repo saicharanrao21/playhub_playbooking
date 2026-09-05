@@ -184,6 +184,9 @@ model User {
   loyaltyAccount           LoyaltyAccount?
   loyaltyTransactions      LoyaltyTransaction[]
   chatMessages             ChatMessage[]
+  supportTickets           SupportTicket[]
+  supportMessages          SupportMessage[]
+  disputes                 Dispute[]
 
   @@map("users")
 }
@@ -220,6 +223,8 @@ model Organization {
   membershipPlans       MembershipPlan[]
   customerMemberships   CustomerMembership[]
   coupons               Coupon[]
+  supportTickets        SupportTicket[]
+  disputes              Dispute[]
 
   @@map("organizations")
 }
@@ -424,6 +429,8 @@ model Booking {
   checkIn       CheckIn?
   financialTransactions FinancialTransaction[]
   couponRedemptions CouponRedemption[]
+  supportTickets SupportTicket[]
+  disputes      Dispute[]
 
   @@index([organizationId])
   @@index([facilityId])
@@ -508,6 +515,7 @@ model Payment {
   organization Organization @relation(fields: [organizationId], references: [id])
   booking      Booking      @relation(fields: [bookingId], references: [id])
   financialTransactions FinancialTransaction[]
+  disputes     Dispute[]
 
   @@index([organizationId])
   @@index([bookingId])
@@ -1079,4 +1087,83 @@ model ChatMessage {
   @@index([senderId])
   @@index([clientMessageId])
   @@map("chat_messages")
+}
+
+model SupportTicket {
+  id              String    @id @default(uuid())
+  organizationId  String?
+  userId          String
+  bookingId       String?
+  category        String    @default("OTHER")
+  subject         String
+  description     String
+  priority        String    @default("MEDIUM")
+  status          String    @default("OPEN")
+  assignedAgentId String?
+  resolutionNotes String?
+  closedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization Organization?    @relation(fields: [organizationId], references: [id])
+  user         User            @relation(fields: [userId], references: [id])
+  booking      Booking?        @relation(fields: [bookingId], references: [id])
+  messages     SupportMessage[]
+  dispute      Dispute?
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([bookingId])
+  @@index([status])
+  @@index([priority])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id          String   @id @default(uuid())
+  ticketId    String
+  senderId    String
+  senderRole  String   @default("CUSTOMER")
+  body        String
+  attachments Json?
+  createdAt   DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id])
+  sender User          @relation(fields: [senderId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@index([senderId])
+  @@map("support_messages")
+}
+
+model Dispute {
+  id                  String    @id @default(uuid())
+  ticketId            String    @unique
+  bookingId           String
+  paymentId           String?
+  organizationId      String
+  customerId          String
+  reason              String
+  description         String
+  status              String    @default("OPEN")
+  partnerResponse     String?
+  decision            String?
+  refundAmount        Decimal?  @db.Decimal(12, 2)
+  goodwillPoints      Int?
+  decidedById         String?
+  decidedAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  ticket       SupportTicket @relation(fields: [ticketId], references: [id])
+  booking      Booking       @relation(fields: [bookingId], references: [id])
+  payment      Payment?      @relation(fields: [paymentId], references: [id])
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  customer     User          @relation(fields: [customerId], references: [id])
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([bookingId])
+  @@index([status])
+  @@map("disputes")
 }
