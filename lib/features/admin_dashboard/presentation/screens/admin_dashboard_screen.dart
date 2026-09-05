@@ -169,6 +169,17 @@ class AdminDashboardScreen extends ConsumerWidget {
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => context.push('/admin-dashboard/finance'),
                       ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: Icon(Icons.webhook, color: colorScheme.primary),
+                        ),
+                        title: const Text('Gateway Webhook Operations', style: TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: const Text('Inspect Razorpay/Stripe webhooks & retry failed events'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/admin-dashboard/webhooks'),
+                      ),
                     ],
                   ),
                 ),

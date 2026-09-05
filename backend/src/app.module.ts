@@ -24,6 +24,7 @@ import { FinanceModule } from './finance/finance.module';
 import { AdminModule } from './admin/admin.module';
 import { RedisModule } from './redis/redis.module';
 import { QueueModule } from './queues/queue.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 import { HealthController } from './health/health.controller';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
@@ -68,6 +69,7 @@ import { validate } from './common/config/env.validation';
     AdminModule,
     RedisModule,
     QueueModule,
+    WebhooksModule,
   ],
   controllers: [HealthController],
   providers: [

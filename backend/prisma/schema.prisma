@@ -606,18 +606,30 @@ model Media {
 }
 
 model PaymentWebhookEvent {
-  id              String   @id @default(uuid())
-  provider        String
-  providerEventId String
-  eventType       String
-  paymentId       String?
-  processedAt     DateTime @default(now())
-  status          String   @default("SUCCESS")
-  payload         Json?
-  createdAt       DateTime @default(now())
+  id                  String    @id @default(uuid())
+  provider            String
+  providerEventId     String
+  eventType           String
+  signature           String?
+  status              String    @default("RECEIVED") // RECEIVED, QUEUED, PROCESSING, PROCESSED, IGNORED, FAILED
+  paymentId           String?
+  organizationId      String?
+  payload             Json?
+  receivedAt          DateTime  @default(now())
+  processingStartedAt DateTime?
+  processedAt         DateTime?
+  failedAt            DateTime?
+  retryCount          Int       @default(0)
+  lastError           String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   @@unique([provider, providerEventId])
   @@index([provider, providerEventId])
+  @@index([status])
+  @@index([paymentId])
+  @@index([organizationId])
+  @@index([createdAt])
   @@map("payment_webhook_events")
 }
 

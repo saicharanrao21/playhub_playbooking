@@ -51,6 +51,7 @@ import '../../features/admin_dashboard/presentation/screens/admin_reconciliation
 import '../../features/admin_dashboard/presentation/screens/admin_commission_config_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/admin_financial_adjustments_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/admin_settlements_payouts_screen.dart';
+import '../../features/admin_dashboard/presentation/screens/admin_webhook_logs_screen.dart';
 import '../../features/partner/presentation/screens/partner_entry_screen.dart';
 import '../../features/partner/presentation/screens/partner_onboarding_screen.dart';
 import '../../features/partner/presentation/screens/partner_shell_screen.dart';
@@ -383,6 +384,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'audit',
             name: 'admin_audit',
             builder: (context, state) => const AdminAuditLogScreen(),
+          ),
+          GoRoute(
+            path: 'webhooks',
+            name: 'admin_webhooks',
+            builder: (context, state) => const AdminWebhookLogsScreen(),
           ),
           GoRoute(
             path: 'finance',
