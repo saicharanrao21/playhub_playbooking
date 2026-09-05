@@ -1,6 +1,7 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue, JobsOptions } from 'bullmq';
+import { MetricsService } from '../observability/metrics.service';
 
 export interface QueueHealthStats {
   queueName: string;
@@ -16,7 +17,10 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(QueueService.name);
   private queues: Map<string, Queue> = new Map();
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    @Optional() private readonly metricsService?: MetricsService,
+  ) {}
 
   async onModuleInit() {
     this.initQueues();
@@ -116,7 +120,11 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      return await queue.add(name, payload, opts);
+      const job = await queue.add(name, payload, opts);
+      if (this.metricsService) {
+        this.metricsService.queueJobsTotal.inc({ queue: queueName, status: 'added' });
+      }
+      return job;
     } catch (e) {
       this.logger.error(`Failed to add job [${name}] to queue [${queueName}]: ${e.message}`);
       return null;

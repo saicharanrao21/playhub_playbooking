@@ -25,6 +25,8 @@ import { AdminModule } from './admin/admin.module';
 import { RedisModule } from './redis/redis.module';
 import { QueueModule } from './queues/queue.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
+import { ObservabilityModule } from './observability/observability.module';
+import { MetricsMiddleware } from './observability/metrics.middleware';
 import { HealthController } from './health/health.controller';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
@@ -70,6 +72,7 @@ import { validate } from './common/config/env.validation';
     RedisModule,
     QueueModule,
     WebhooksModule,
+    ObservabilityModule,
   ],
   controllers: [HealthController],
   providers: [
@@ -81,6 +84,6 @@ import { validate } from './common/config/env.validation';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RequestIdMiddleware).forRoutes('*');
+    consumer.apply(RequestIdMiddleware, MetricsMiddleware).forRoutes('*');
   }
 }

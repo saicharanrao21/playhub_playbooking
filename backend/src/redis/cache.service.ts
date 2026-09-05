@@ -1,25 +1,46 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { RedisService } from './redis.service';
+import { MetricsService } from '../observability/metrics.service';
 
 @Injectable()
 export class CacheService {
   private readonly logger = new Logger(CacheService.name);
   private readonly defaultTtlSeconds = 300; // 5 minutes default TTL
 
-  constructor(private readonly redisService: RedisService) {}
+  constructor(
+    private readonly redisService: RedisService,
+    @Optional() private readonly metricsService?: MetricsService,
+  ) {}
 
   async get<T>(key: string): Promise<T | null> {
     try {
       const client = this.redisService.getClient();
-      if (!client) return null;
+      if (!client) {
+        if (this.metricsService) {
+          this.metricsService.cacheOperationsTotal.inc({ operation: 'get', result: 'miss' });
+        }
+        return null;
+      }
 
       const formattedKey = this.redisService.formatKey('cache', key);
       const raw = await client.get(formattedKey);
-      if (!raw) return null;
+      if (!raw) {
+        if (this.metricsService) {
+          this.metricsService.cacheOperationsTotal.inc({ operation: 'get', result: 'miss' });
+        }
+        return null;
+      }
+
+      if (this.metricsService) {
+        this.metricsService.cacheOperationsTotal.inc({ operation: 'get', result: 'hit' });
+      }
 
       return JSON.parse(raw) as T;
     } catch (e) {
       this.logger.warn(`Cache get failed for key [${key}]: ${e.message}`);
+      if (this.metricsService) {
+        this.metricsService.cacheOperationsTotal.inc({ operation: 'get', result: 'error' });
+      }
       return null;
     }
   }

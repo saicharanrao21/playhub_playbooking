@@ -13,6 +13,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Events } from '../common/constants/events';
 import { PaymentProvider, PaymentStatus, BookingStatus, Prisma } from '@prisma/client';
 import { WebhookStatus } from './webhooks.types';
+import { MetricsService } from '../observability/metrics.service';
+import { Optional } from '@nestjs/common';
 
 @Injectable()
 export class WebhooksService {
@@ -25,6 +27,7 @@ export class WebhooksService {
     private readonly queueService: QueueService,
     private readonly auditService: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    @Optional() private readonly metricsService?: MetricsService,
   ) {}
 
   /**
@@ -104,6 +107,10 @@ export class WebhooksService {
       { webhookEventId: webhookEvent.id },
       { jobId: webhookEvent.id },
     );
+
+    if (this.metricsService) {
+      this.metricsService.webhooksTotal.inc({ provider: pType, status: 'queued' });
+    }
 
     return {
       received: true,
