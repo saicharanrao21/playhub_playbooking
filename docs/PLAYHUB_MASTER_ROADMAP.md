@@ -46,7 +46,7 @@
 - **Phase 65: Object Storage (S3/R2) & Edge CDN Media Pipeline** ✅ (Provider-agnostic S3/R2 presigned upload URLs, headObject completion validation, private KYC download URLs, CDN delivery, MediaWorker thumbnail queue)
 - **Phase 66: Memberships, Coupons & Referral Loyalty Engine** ✅ (Membership plans & active subscriptions, coupon validation pipeline, referral code attribution, self-referral blocks, double-entry loyalty points ledger, Customer Flutter UX)
 - **Phase 67: Real-Time WebSockets & In-App Match Chat** ✅ (NestJS ChatGateway WebSocket namespace, JWT handshake auth, match room authorization, clientMessageId idempotency, real-time court arrival alerts, REST sync APIs, Flutter MatchChatScreen)
-- **Phase 68: Search Intelligence & Recommendation Engine** (User preference vectoring, venue ranking algorithms, re-booking recommendations)
+- **Phase 68: Search Intelligence & Recommendation Engine** ✅ (QueryUnderstandingService intent parser, 7-signal weighted ranking model, Recommendations API, cold-start fallback, admin scoring config, Flutter recommendation carousels)
 - **Phase 69: Advanced Support, Disputes & Resolution** (Customer support ticketing, refund dispute mediation workflow, goodwill credits)
 - **Phase 70: Enterprise Analytics & Reporting** (Partner revenue reports, CSV/PDF exports, venue peak-time heatmaps)
 - **Phase 71: Security & Compliance Hardening** (Penetration testing gap closure, rate-limiting tuning, CORS enforcement, DB PITR backups)

@@ -122,6 +122,7 @@ class _HomeContent extends ConsumerWidget {
     final location = ref.watch(userLocationProvider);
     final nearbyVenuesAsync = ref.watch(nearbyVenuesProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
+    final recommendationsAsync = ref.watch(recommendationsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -298,6 +299,82 @@ class _HomeContent extends ConsumerWidget {
               ),
 
               const SizedBox(height: 24),
+
+              // Recommendations Section
+              recommendationsAsync.when(
+                data: (sections) {
+                  if (sections.isEmpty) return const SizedBox.shrink();
+
+                  return Column(
+                    children: sections.map((sec) {
+                      final items = sec['items'] as List? ?? [];
+                      if (items.isEmpty) return const SizedBox.shrink();
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(sec['title'] ?? 'Recommended', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                                  Text(sec['subtitle'] ?? '', style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant)),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            height: 130,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: items.length,
+                              separatorBuilder: (c, i) => const SizedBox(width: 12),
+                              itemBuilder: (context, index) {
+                                final item = items[index] as Map<String, dynamic>;
+                                return InkWell(
+                                  onTap: () => context.push('/venue/${item['id']}'),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    width: 180,
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(item['name'] ?? 'Venue', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                        const SizedBox(height: 4),
+                                        Text('${item['city'] ?? 'Nearby'} • ${item['distanceFormatted'] ?? ''}', style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant)),
+                                        const Spacer(),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text('₹${item['minPrice'] ?? 500}/hr', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: colorScheme.primary)),
+                                            const Icon(Icons.arrow_forward_ios, size: 12),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      );
+                    }).toList(),
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (e, _) => const SizedBox.shrink(),
+              ),
 
               // Nearby Venues Header
               Row(

@@ -30,6 +30,7 @@ import { PromotionsModule } from './promotions/promotions.module';
 import { MembershipsModule } from './memberships/memberships.module';
 import { LoyaltyModule } from './loyalty/loyalty.module';
 import { ChatModule } from './chat/chat.module';
+import { SearchIntelligenceModule } from './search-intelligence/search-intelligence.module';
 import { MetricsMiddleware } from './observability/metrics.middleware';
 import { HealthController } from './health/health.controller';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
@@ -81,6 +82,7 @@ import { validate } from './common/config/env.validation';
     MembershipsModule,
     LoyaltyModule,
     ChatModule,
+    SearchIntelligenceModule,
   ],
   controllers: [HealthController],
   providers: [
