@@ -6,19 +6,21 @@ import { LocalFilesystemStorageProvider } from '../common/storage/local-filesyst
 import { S3StorageProvider } from '../common/storage/s3-storage.provider';
 import { ConfigService } from '@nestjs/config';
 import { OrganizationsModule } from '../organizations/organizations.module';
+import { AuditService } from '../common/services/audit.service';
 
 @Module({
   imports: [OrganizationsModule],
   controllers: [MediaController],
   providers: [
     MediaService,
+    AuditService,
     {
       provide: STORAGE_PROVIDER,
       useFactory: (config: ConfigService) => {
-        const provider = config.get<string>('MEDIA_STORAGE_PROVIDER', 'local');
-        return provider === 's3'
-          ? new S3StorageProvider(config)
-          : new LocalFilesystemStorageProvider(config);
+        const provider = config.get<string>('STORAGE_PROVIDER', config.get<string>('MEDIA_STORAGE_PROVIDER', 's3'));
+        return provider === 'local'
+          ? new LocalFilesystemStorageProvider(config)
+          : new S3StorageProvider(config);
       },
       inject: [ConfigService],
     },

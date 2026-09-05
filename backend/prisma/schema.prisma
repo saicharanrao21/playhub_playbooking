@@ -577,31 +577,42 @@ model Notification {
 }
 
 model Media {
-  id             String    @id @default(uuid())
-  organizationId String?
-  url            String
-  storageKey     String
-  mimeType       String
-  fileSize       Int
-  type           MediaType @default(IMAGE)
+  id              String    @id @default(uuid())
+  organizationId  String?
+  category        String    @default("VENUE_MEDIA") // VENUE_MEDIA, FACILITY_MEDIA, KYC_DOCUMENT
+  entityType      String?   // VENUE, FACILITY, ORGANIZATION, USER
+  entityId        String?
+  url             String
+  storageKey      String
+  storageProvider String    @default("s3")
+  bucket          String?
+  mimeType        String
+  fileSize        Int
+  type            MediaType @default(IMAGE)
+  visibility      String    @default("PUBLIC") // PUBLIC, PRIVATE
+  status          String    @default("UPLOAD_PENDING") // UPLOAD_PENDING, UPLOADING, UPLOADED, PROCESSING, READY, FAILED, DELETED
+  checksum        String?
 
-  userId         String?
-  venueId        String?
-  facilityId     String?
+  userId          String?
+  venueId         String?
+  facilityId      String?
 
-  displayOrder   Int       @default(0)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  displayOrder    Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  organization   Organization? @relation(fields: [organizationId], references: [id])
-  user           User?         @relation(fields: [userId], references: [id])
-  venue          Venue?        @relation(fields: [venueId], references: [id])
-  facility       Facility?     @relation(fields: [facilityId], references: [id])
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  user            User?         @relation(fields: [userId], references: [id])
+  venue           Venue?        @relation(fields: [venueId], references: [id])
+  facility        Facility?     @relation(fields: [facilityId], references: [id])
 
   @@index([organizationId])
   @@index([venueId])
   @@index([facilityId])
   @@index([userId])
+  @@index([category])
+  @@index([status])
+  @@index([entityType, entityId])
   @@map("media")
 }
 
