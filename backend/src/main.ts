@@ -17,21 +17,28 @@ async function bootstrap() {
   const port = configService.get<number>('PORT') || 3000;
   const apiPrefix = configService.get<string>('API_PREFIX') || 'api/v1';
 
-  // Security
-  app.use(helmet());
+  // Security Headers via Helmet with production CSP rules
+  app.use(
+    helmet({
+      contentSecurityPolicy: configService.get('NODE_ENV') === 'production',
+      crossOriginEmbedderPolicy: configService.get('NODE_ENV') === 'production',
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    }),
+  );
 
-  const allowedOrigins = configService.get<string>('CORS_ORIGINS')?.split(',') || [];
+  const allowedOrigins = configService.get<string>('CORS_ORIGINS')?.split(',').map(o => o.trim()) || [];
   app.enableCors({
     origin: (origin, callback) => {
+      // In production, reject request if Origin header is present but not explicitly allowed
       if (!origin || allowedOrigins.includes(origin) || configService.get('NODE_ENV') !== 'production') {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        callback(new Error('Not allowed by production CORS policy'));
       }
     },
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    allowedHeaders: 'Content-Type, Accept, Authorization, x-organization-id, x-idempotency-key, x-razorpay-signature, stripe-signature',
+    allowedHeaders: 'Content-Type, Accept, Authorization, x-organization-id, x-idempotency-key, x-request-id, x-razorpay-signature, stripe-signature, traceparent',
   });
 
   // Body parser limits

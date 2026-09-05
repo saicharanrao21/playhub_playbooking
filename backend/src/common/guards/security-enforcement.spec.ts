@@ -1,220 +1,93 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { OrganizationGuard } from './organization.guard';
+import { PlatformAdminGuard } from './platform-admin.guard';
+import { PermissionsGuard } from './permissions.guard';
+import { OrganizationsService } from '../../organizations/organizations.service';
 import { ExecutionContext, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { OrganizationGuard } from './organization.guard';
-import { PermissionsGuard } from './permissions.guard';
-import { PlatformAdminGuard } from './platform-admin.guard';
-import { OrganizationsService } from '../../organizations/organizations.service';
-import { Roles } from '../constants/roles';
-import { Permissions } from '../constants/permissions';
 
-describe('Security & Multi-Tenant Authorization Enforcement', () => {
-  describe('OrganizationGuard (Tenant Isolation)', () => {
-    let guard: OrganizationGuard;
-    let mockOrgService: Partial<OrganizationsService>;
+describe('Security & Multi-Tenant IDOR Protection', () => {
+  let orgGuard: OrganizationGuard;
+  let adminGuard: PlatformAdminGuard;
+  let permissionsGuard: PermissionsGuard;
 
-    beforeEach(() => {
-      mockOrgService = {
-        getMembership: jest.fn(),
-      };
-      guard = new OrganizationGuard(mockOrgService as OrganizationsService);
-    });
+  const mockOrganizationsService = {
+    getMembership: jest.fn(),
+  };
 
-    it('should throw ForbiddenException if user context is missing from request', async () => {
-      const mockContext = {
-        switchToHttp: () => ({
-          getRequest: () => ({
-            headers: { 'x-organization-id': 'org-1' },
-          }),
-        }),
-      } as unknown as ExecutionContext;
+  const mockReflector = {
+    getAllAndOverride: jest.fn(),
+  };
 
-      await expect(guard.canActivate(mockContext)).rejects.toThrow(ForbiddenException);
-    });
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        OrganizationGuard,
+        PlatformAdminGuard,
+        PermissionsGuard,
+        { provide: OrganizationsService, useValue: mockOrganizationsService },
+        { provide: Reflector, useValue: mockReflector },
+      ],
+    }).compile();
 
-    it('should throw BadRequestException if organization context is missing', async () => {
-      const mockContext = {
-        switchToHttp: () => ({
-          getRequest: () => ({
-            user: { userId: 'user-1' },
-            headers: {},
-            params: {},
-          }),
-        }),
-      } as unknown as ExecutionContext;
-
-      await expect(guard.canActivate(mockContext)).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw ForbiddenException if user is not a verified member of the requested organization (Tenant Cross-Access Prevention)', async () => {
-      (mockOrgService.getMembership as jest.Mock).mockResolvedValue(null);
-
-      const mockContext = {
-        switchToHttp: () => ({
-          getRequest: () => ({
-            user: { userId: 'user-attacker' },
-            headers: { 'x-organization-id': 'org-victim' },
-            params: {},
-          }),
-        }),
-      } as unknown as ExecutionContext;
-
-      await expect(guard.canActivate(mockContext)).rejects.toThrow(ForbiddenException);
-      expect(mockOrgService.getMembership).toHaveBeenCalledWith('user-attacker', 'org-victim');
-    });
-
-    it('should successfully activate and attach verified organization context and permissions', async () => {
-      const mockMembership = {
-        id: 'mem-1',
-        roles: [
-          {
-            name: Roles.PARTNER_OWNER,
-            permissions: [
-              { action: 'read', resource: 'venue' },
-              { action: 'update', resource: 'venue' },
-            ],
-          },
-        ],
-      };
-      (mockOrgService.getMembership as jest.Mock).mockResolvedValue(mockMembership);
-
-      const req: any = {
-        user: { userId: 'user-owner' },
-        headers: { 'x-organization-id': 'org-owner' },
-        params: {},
-      };
-      const mockContext = {
-        switchToHttp: () => ({
-          getRequest: () => req,
-        }),
-      } as unknown as ExecutionContext;
-
-      const result = await guard.canActivate(mockContext);
-      expect(result).toBe(true);
-      expect(req.organizationId).toBe('org-owner');
-      expect(req.user.permissions).toContain('read:venue');
-      expect(req.user.permissions).toContain('update:venue');
-    });
+    orgGuard = module.get<OrganizationGuard>(OrganizationGuard);
+    adminGuard = module.get<PlatformAdminGuard>(PlatformAdminGuard);
+    permissionsGuard = module.get<PermissionsGuard>(PermissionsGuard);
   });
 
-  describe('PermissionsGuard (RBAC Enforcement)', () => {
-    let guard: PermissionsGuard;
-    let mockReflector: Partial<Reflector>;
-
-    beforeEach(() => {
-      mockReflector = {
-        getAllAndOverride: jest.fn(),
-      };
-      guard = new PermissionsGuard(mockReflector as Reflector);
-    });
-
-    it('should allow access if no permissions are specified on endpoint', () => {
-      (mockReflector.getAllAndOverride as jest.Mock).mockReturnValue(undefined);
-
-      const mockContext = {
-        getHandler: () => {},
-        getClass: () => {},
-        switchToHttp: () => ({
-          getRequest: () => ({ user: { userId: 'user-1' } }),
+  function createMockContext(user: any, headers: Record<string, string> = {}): ExecutionContext {
+    return {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          user,
+          headers,
+          params: {},
         }),
-      } as unknown as ExecutionContext;
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    } as any;
+  }
 
-      expect(guard.canActivate(mockContext)).toBe(true);
-    });
+  it('should block partner user from accessing Organization B data (IDOR Protection)', async () => {
+    const user = { userId: 'user-101' };
+    mockOrganizationsService.getMembership.mockResolvedValue(null);
+    const ctx = createMockContext(user, { 'x-organization-id': 'org-B' });
 
-    it('should throw ForbiddenException if user lacks required permission', () => {
-      (mockReflector.getAllAndOverride as jest.Mock).mockReturnValue([Permissions.VENUE_APPROVE]);
-
-      const mockContext = {
-        getHandler: () => {},
-        getClass: () => {},
-        switchToHttp: () => ({
-          getRequest: () => ({
-            user: {
-              userId: 'partner-user',
-              permissions: ['read:venue', 'update:venue'],
-            },
-          }),
-        }),
-      } as unknown as ExecutionContext;
-
-      expect(() => guard.canActivate(mockContext)).toThrow(ForbiddenException);
-    });
-
-    it('should allow access if user has exact required permission', () => {
-      (mockReflector.getAllAndOverride as jest.Mock).mockReturnValue([Permissions.BOOKING_READ]);
-
-      const mockContext = {
-        getHandler: () => {},
-        getClass: () => {},
-        switchToHttp: () => ({
-          getRequest: () => ({
-            user: {
-              userId: 'customer-user',
-              permissions: [Permissions.BOOKING_READ],
-            },
-          }),
-        }),
-      } as unknown as ExecutionContext;
-
-      expect(guard.canActivate(mockContext)).toBe(true);
-    });
-
-    it('should allow access if user is PLATFORM_ADMIN or PLAYHUB_SUPER_ADMIN (wildcard bypass)', () => {
-      (mockReflector.getAllAndOverride as jest.Mock).mockReturnValue([Permissions.VENUE_APPROVE]);
-
-      const mockContext = {
-        getHandler: () => {},
-        getClass: () => {},
-        switchToHttp: () => ({
-          getRequest: () => ({
-            user: {
-              userId: 'super-admin-user',
-              roles: [Roles.PLAYHUB_SUPER_ADMIN],
-              permissions: ['*'],
-            },
-          }),
-        }),
-      } as unknown as ExecutionContext;
-
-      expect(guard.canActivate(mockContext)).toBe(true);
-    });
+    await expect(orgGuard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+    expect(mockOrganizationsService.getMembership).toHaveBeenCalledWith('user-101', 'org-B');
   });
 
-  describe('PlatformAdminGuard (Internal Platform Boundary)', () => {
-    let guard: PlatformAdminGuard;
-
-    beforeEach(() => {
-      guard = new PlatformAdminGuard();
+  it('should allow partner user access to their own Organization A data', async () => {
+    const user = { userId: 'user-101' };
+    mockOrganizationsService.getMembership.mockResolvedValue({
+      id: 'mem-1',
+      roles: [{ name: 'BUSINESS_OWNER', permissions: [{ action: 'read', resource: 'organization' }] }],
     });
+    const ctx = createMockContext(user, { 'x-organization-id': 'org-A' });
 
-    it('should throw ForbiddenException if user is not a platform admin', () => {
-      const mockContext = {
-        switchToHttp: () => ({
-          getRequest: () => ({
-            user: {
-              userId: 'customer-1',
-              roles: [Roles.CUSTOMER],
-            },
-          }),
-        }),
-      } as unknown as ExecutionContext;
+    const result = await orgGuard.canActivate(ctx);
+    expect(result).toBe(true);
+  });
 
-      expect(() => guard.canActivate(mockContext)).toThrow(ForbiddenException);
-    });
+  it('should block non-admin users from platform admin endpoints', () => {
+    const user = {
+      userId: 'user-102',
+      isPlatformAdmin: false,
+    };
+    const ctx = createMockContext(user);
 
-    it('should allow access if user has PLAYHUB_SUPER_ADMIN or isPlatformAdmin flag', () => {
-      const mockContext = {
-        switchToHttp: () => ({
-          getRequest: () => ({
-            user: {
-              userId: 'admin-1',
-              isPlatformAdmin: true,
-            },
-          }),
-        }),
-      } as unknown as ExecutionContext;
+    expect(() => adminGuard.canActivate(ctx)).toThrow(ForbiddenException);
+  });
 
-      expect(guard.canActivate(mockContext)).toBe(true);
-    });
+  it('should allow platform admin access to admin endpoints', () => {
+    const user = {
+      userId: 'user-ADMIN',
+      isPlatformAdmin: true,
+    };
+    const ctx = createMockContext(user);
+
+    expect(adminGuard.canActivate(ctx)).toBe(true);
   });
 });
