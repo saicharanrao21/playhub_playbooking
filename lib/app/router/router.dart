@@ -43,6 +43,7 @@ import '../../features/profile/presentation/screens/memberships_screen.dart';
 import '../../features/profile/presentation/screens/coupons_screen.dart';
 import '../../features/profile/presentation/screens/referral_screen.dart';
 import '../../features/profile/presentation/screens/loyalty_screen.dart';
+import '../../features/chat/presentation/screens/match_chat_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/city_management_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/category_management_screen.dart';
 import '../../features/admin_dashboard/presentation/screens/activity_management_screen.dart';
@@ -188,6 +189,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           matchId: state.pathParameters['id']!,
           match: state.extra as MatchItem?,
         ),
+        routes: [
+          GoRoute(
+            path: 'chat',
+            name: 'match_chat',
+            builder: (context, state) => MatchChatScreen(
+              matchId: state.pathParameters['id']!,
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: '/profile',

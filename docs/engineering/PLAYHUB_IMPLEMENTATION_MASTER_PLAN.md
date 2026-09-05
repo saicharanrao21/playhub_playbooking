@@ -58,7 +58,7 @@
 - **Dependencies**: Phase 57 (Finance), Phase 59 (Commissions)
 - **Scope**: Promo code validation engine, percentage/fixed discounts, partner-sponsored vs platform-sponsored coupon accounting.
 
-### Phase 67: Real-Time WebSockets & In-App Match Chat
+### Phase 67: Real-Time WebSockets & In-App Match Chat ✅
 - **Dependencies**: Phase 52.1 (Matches)
 - **Scope**: NestJS WebSocket gateway (Socket.IO / ws), real-time match group chat, court arrival notifications.
 

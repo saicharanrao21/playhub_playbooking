@@ -183,6 +183,7 @@ model User {
   receivedReferral         Referral?               @relation("Referee")
   loyaltyAccount           LoyaltyAccount?
   loyaltyTransactions      LoyaltyTransaction[]
+  chatMessages             ChatMessage[]
 
   @@map("users")
 }
@@ -1045,4 +1046,37 @@ model LoyaltyTransaction {
   @@index([type])
   @@index([expiresAt])
   @@map("loyalty_transactions")
+}
+
+model MatchConversation {
+  id             String   @id @default(uuid())
+  matchId        String   @unique
+  organizationId String?
+  status         String   @default("ACTIVE") // ACTIVE, ARCHIVED
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  messages ChatMessage[]
+
+  @@index([matchId])
+  @@index([organizationId])
+  @@map("match_conversations")
+}
+
+model ChatMessage {
+  id              String   @id @default(uuid())
+  conversationId  String
+  senderId        String
+  messageType     String   @default("TEXT") // TEXT, ARRIVAL_ALERT, SYSTEM, LOCATION
+  body            String
+  clientMessageId String?  @unique
+  createdAt       DateTime @default(now())
+
+  conversation MatchConversation @relation(fields: [conversationId], references: [id])
+  sender       User              @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@index([clientMessageId])
+  @@map("chat_messages")
 }

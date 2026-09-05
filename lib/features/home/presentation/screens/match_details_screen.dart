@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/models/app_models.dart';
 import '../../../../core/providers/repository_providers.dart';
@@ -175,6 +176,21 @@ class _MatchDetailsScreenState extends ConsumerState<MatchDetailsScreen> {
                           child: Text(
                             '${match.venueName}, ${match.location}',
                             style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => context.push('/match/${match.id}/chat'),
+                            icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                            label: const Text('Match Chat'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
                           ),
                         ),
                       ],
