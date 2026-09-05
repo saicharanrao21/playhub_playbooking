@@ -38,7 +38,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     const redisUrl = this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
     const connection = this.parseRedisUrl(redisUrl);
 
-    const queueNames = ['notifications', 'finance', 'reconciliation', 'settlement', 'webhooks', 'media'];
+    const queueNames = ['notifications', 'finance', 'reconciliation', 'settlement', 'webhooks', 'media', 'reports'];
 
     const defaultJobOptions: JobsOptions = {
       attempts: 3,
@@ -114,6 +114,10 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
 
   async addMediaJob(name: string, payload: any, opts?: JobsOptions) {
     return this.addJob('media', name, payload, opts);
+  }
+
+  async addReportJob(name: string, payload: any, opts?: JobsOptions) {
+    return this.addJob('reports', name, payload, opts);
   }
 
   private async addJob(queueName: string, name: string, payload: any, opts?: JobsOptions) {

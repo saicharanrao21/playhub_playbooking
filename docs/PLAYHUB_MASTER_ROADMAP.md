@@ -48,7 +48,7 @@
 - **Phase 67: Real-Time WebSockets & In-App Match Chat** ✅ (NestJS ChatGateway WebSocket namespace, JWT handshake auth, match room authorization, clientMessageId idempotency, real-time court arrival alerts, REST sync APIs, Flutter MatchChatScreen)
 - **Phase 68: Search Intelligence & Recommendation Engine** ✅ (QueryUnderstandingService intent parser, 7-signal weighted ranking model, Recommendations API, cold-start fallback, admin scoring config, Flutter recommendation carousels)
 - **Phase 69: Advanced Support, Disputes & Resolution** ✅ (SupportTicket & Dispute models, decision engine with PaymentsService refund & LoyaltyService goodwill credit integration, partner dispute response, HelpSupportScreen Flutter UX)
-- **Phase 70: Enterprise Analytics & Reporting** (Partner revenue reports, CSV/PDF exports, venue peak-time heatmaps)
+- **Phase 70: Enterprise Analytics & Reporting** ✅ (Partner & Admin analytics dashboards, period-over-period comparison, 7x24 peak-time court density heatmap, RFC 4180 CSV exports, BullMQ async PDF report generation, PartnerAnalyticsScreen)
 - **Phase 71: Security & Compliance Hardening** (Penetration testing gap closure, rate-limiting tuning, CORS enforcement, DB PITR backups)
 - **Phase 72: Android + iOS + Web Product Parity** (iOS simulator & Web PWA verification, responsive breakpoint tuning, PWA manifest)
 - **Phase 73: Enterprise Load Testing & Performance Engineering** (K6 load scripts simulating 10,000 concurrent booking attempts)

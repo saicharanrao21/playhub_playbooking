@@ -6,6 +6,7 @@ import { ReconciliationWorker } from './workers/reconciliation.worker';
 import { SettlementWorker } from './workers/settlement.worker';
 import { PayoutWorker } from './workers/payout.worker';
 import { MediaWorker } from './workers/media.worker';
+import { ReportWorker } from './workers/report.worker';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { FinanceModule } from '../finance/finance.module';
 
@@ -19,6 +20,7 @@ import { FinanceModule } from '../finance/finance.module';
     SettlementWorker,
     PayoutWorker,
     MediaWorker,
+    ReportWorker,
   ],
   exports: [QueueService],
 })

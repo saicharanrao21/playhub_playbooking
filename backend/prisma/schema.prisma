@@ -187,6 +187,7 @@ model User {
   supportTickets           SupportTicket[]
   supportMessages          SupportMessage[]
   disputes                 Dispute[]
+  reportJobs               ReportJob[]
 
   @@map("users")
 }
@@ -225,6 +226,7 @@ model Organization {
   coupons               Coupon[]
   supportTickets        SupportTicket[]
   disputes              Dispute[]
+  reportJobs            ReportJob[]
 
   @@map("organizations")
 }
@@ -1166,4 +1168,29 @@ model Dispute {
   @@index([bookingId])
   @@index([status])
   @@map("disputes")
+}
+
+model ReportJob {
+  id             String    @id @default(uuid())
+  organizationId String?
+  userId         String
+  reportType     String    // PARTNER_MONTHLY_PERFORMANCE, VENUE_PERFORMANCE, REVENUE_SUMMARY, ADMIN_PLATFORM_SUMMARY
+  format         String    @default("PDF") // PDF, CSV
+  status         String    @default("QUEUED") // QUEUED, PROCESSING, READY, FAILED
+  fileKey        String?
+  downloadUrl    String?
+  startDate      DateTime?
+  endDate        DateTime?
+  filters        Json?
+  errorReason    String?
+  createdAt      DateTime  @default(now())
+  completedAt    DateTime?
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([status])
+  @@map("report_jobs")
 }
